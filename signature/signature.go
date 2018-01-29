@@ -69,21 +69,17 @@ func Sign(scheme SignatureScheme, pri crypto.PrivateKey, msg []byte, opt interfa
 	return &res, nil
 }
 
-func Verify(pub crypto.PublicKey, msg []byte, sig *Signature) (bool, error) {
-	if len(msg) == 0 {
-		return false, errors.New("invalid argument: empty message")
-	}
-
-	if sig == nil {
-		return false, errors.New("invalid argument: signature is nil")
+func Verify(pub crypto.PublicKey, msg []byte, sig *Signature) bool {
+	if len(msg) == 0 || sig == nil {
+		return false
 	}
 
 	h := GetHash(sig.Scheme)
 	if h == nil {
-		return false, errors.New("unknown signature scheme")
+		return false
 	}
 
-	res := true
+	res := false
 
 	switch key := pub.(type) {
 	case *ec.PublicKey:
@@ -92,28 +88,15 @@ func Verify(pub crypto.PublicKey, msg []byte, sig *Signature) (bool, error) {
 			if v, ok := sig.Value.(*DSASignature); ok {
 				digest := h.Sum(msg)
 				res = ecdsa.Verify(key.PublicKey, digest, v.R, v.S)
-			} else {
-				return false, errors.New("invalid signature value")
 			}
 		case SM3withSM2:
 			if v, ok := sig.Value.(*SM2Signature); ok {
 				res = sm2.Verify(key.PublicKey, v.ID, msg, h, v.R, v.S)
-			} else {
-				return false, errors.New("invalid signature value")
 			}
-		default:
-			return false, errors.New("unsupported signature scheme")
 		}
-
-	default:
-		return false, errors.New("unsupported public key")
 	}
 
-	if !res {
-		return false, errors.New("verification failed")
-	}
-
-	return true, nil
+	return res
 }
 
 func Serialize(sig *Signature) ([]byte, error) {
