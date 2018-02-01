@@ -5,6 +5,8 @@ import (
 	"crypto"
 )
 
+// PublicList is a container for serialized public keys.
+// It implements the interface sort.Interface.
 type PublicList [][]byte
 
 func (l PublicList) Len() int {
@@ -19,6 +21,7 @@ func (l PublicList) Swap(i, j int) {
 	l[i], l[j] = l[j], l[i]
 }
 
+// ConvertToPublicList converts the public keys to a PublicList.
 func ConvertToPublicList(keys []crypto.PublicKey) PublicList {
 	res := make(PublicList, 0, len(keys))
 	for _, k := range keys {

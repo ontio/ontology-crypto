@@ -3,6 +3,8 @@ package sm2
 import "crypto/elliptic"
 import "math/big"
 
+// SM2Curve is the curve structure used in sm2 algorithm.
+// It extends elliptic.CurveParams by adding the curve parameter A.
 type SM2Curve struct {
 	elliptic.CurveParams
 	A *big.Int
@@ -10,6 +12,7 @@ type SM2Curve struct {
 
 var p256 *SM2Curve = nil
 
+// SM2P256V1 returns the sm2p256v1 curve.
 func SM2P256V1() elliptic.Curve {
 	if p256 == nil {
 		p256 = &SM2Curve{

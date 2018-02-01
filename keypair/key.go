@@ -1,5 +1,10 @@
-// General public key serialization for multiple algorithms
-
+// Package keypair implements asymmetric key pair generation and some related
+// functions.
+//
+// Multiple types of key pair supported:
+//     ECDSA
+//     SM2
+//
 package keypair
 
 import (
@@ -11,16 +16,23 @@ import (
 	"github.com/OntologyNetwork/ont-crypto/ec"
 )
 
+type KeyType byte
+
+// Supported key types
 const (
-	// public key algorithm label
-	PK_ECDSA = 0x12
-	PK_SM2   = 0x13
+	PK_ECDSA KeyType = 0x12
+	PK_SM2           = 0x13
 )
 
 const err_generate = "key pair generation failed, "
 
-func GenerateKeyPair(alg byte, opts interface{}) (crypto.PrivateKey, crypto.PublicKey, error) {
-	switch alg {
+// GenerateKeyPair generates a pair of private and public keys in type t.
+// opts is the necessary parameter(s), which is defined by the key type:
+//     ECDSA: a byte specifies the elliptic curve, which defined in package ec
+//     SM2: same as ECDSA
+//
+func GenerateKeyPair(t byte, opts interface{}) (crypto.PrivateKey, crypto.PublicKey, error) {
+	switch t {
 	case PK_ECDSA, PK_SM2:
 		t, ok := opts.(byte)
 		if !ok {
@@ -31,7 +43,7 @@ func GenerateKeyPair(alg byte, opts interface{}) (crypto.PrivateKey, crypto.Publ
 			return nil, nil, errors.New(err_generate + err.Error())
 		}
 
-		if alg == PK_ECDSA {
+		if t == PK_ECDSA {
 			return ec.GenerateECKeyPair(c, rand.Reader, ec.ECDSA)
 		} else {
 			return ec.GenerateECKeyPair(c, rand.Reader, ec.SM2)
@@ -43,8 +55,7 @@ func GenerateKeyPair(alg byte, opts interface{}) (crypto.PrivateKey, crypto.Publ
 
 }
 
-// Serialize the public key as the following format:
-//     algorithm label + parameters + public key
+// SerializePublicKey serializes the public key to a byte sequence.
 func SerializePublicKey(key crypto.PublicKey) []byte {
 	var buf bytes.Buffer
 	switch t := key.(type) {
@@ -68,7 +79,7 @@ func SerializePublicKey(key crypto.PublicKey) []byte {
 	return buf.Bytes()
 }
 
-// Parse the public key from the buffer.
+// DeserializePublicKey parse the byte sequencce to a public key.
 func DeserializePublicKey(data []byte) (crypto.PublicKey, error) {
 	switch data[0] {
 	case PK_ECDSA, PK_SM2:

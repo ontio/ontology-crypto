@@ -1,3 +1,4 @@
+// Package sm2 implements SM2 signature algorithm
 package sm2
 
 import (
@@ -17,7 +18,9 @@ type zr struct {
 }
 
 const (
-	aesIV      = "IV for <SM2> CTR"
+	aesIV = "IV for <SM2> CTR"
+
+	// DEFAULT_ID is the default user id used in Sign and Verify
 	DEFAULT_ID = "1234567812345678"
 )
 
@@ -85,6 +88,8 @@ func getZ(msg []byte, pub *ecdsa.PublicKey, userID string, hasher hash.Hash) ([]
 	return append(hasher.Sum(make([]byte, 0)), msg...), nil
 }
 
+// Sign generates signature for the input message using the private key and id.
+// It returns (r, s) as the signature or error.
 func Sign(rand io.Reader, priv *ecdsa.PrivateKey, id string, msg []byte, hasher hash.Hash) (r, s *big.Int, err error) {
 	mz, err := getZ(msg, &priv.PublicKey, id, hasher)
 	digest := hasher.Sum(mz)
@@ -158,6 +163,7 @@ func Sign(rand io.Reader, priv *ecdsa.PrivateKey, id string, msg []byte, hasher 
 	return
 }
 
+// Verify checks whether the input (r, s) is a valid signature for the message.
 func Verify(pub *ecdsa.PublicKey, id string, msg []byte, hasher hash.Hash, r, s *big.Int) bool {
 	N := pub.Params().N
 	if N.Sign() == 0 {

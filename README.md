@@ -3,7 +3,6 @@
 Cryptography Library for Ontology Network
 
 # Usage
-
 ## Key pair
 
 ```go
@@ -36,8 +35,8 @@ sig, err := signature.Sign(signature.SHA256WITHECDSA, private, msg, nil)
 buf, err := signature.Serialize(sig)
 
 // Deserialization
-sig, err = Deserialize(buf)
+sig, err = signature.Deserialize(buf)
 
 // Verify the signature using public key @public
-ok := Verify(public, msg, sig)
+ok := signature.Verify(public, msg, sig)
 ```
