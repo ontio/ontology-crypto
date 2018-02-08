@@ -31,14 +31,14 @@ const err_generate = "key pair generation failed, "
 //     ECDSA: a byte specifies the elliptic curve, which defined in package ec
 //     SM2: same as ECDSA
 //
-func GenerateKeyPair(t byte, opts interface{}) (crypto.PrivateKey, crypto.PublicKey, error) {
+func GenerateKeyPair(t KeyType, opts interface{}) (crypto.PrivateKey, crypto.PublicKey, error) {
 	switch t {
 	case PK_ECDSA, PK_SM2:
-		t, ok := opts.(byte)
+		param, ok := opts.(byte)
 		if !ok {
 			return nil, nil, errors.New(err_generate + "invalid EC options, 1 byte curve label excepted")
 		}
-		c, err := ec.GetCurve(t)
+		c, err := ec.GetCurve(param)
 		if err != nil {
 			return nil, nil, errors.New(err_generate + err.Error())
 		}
@@ -62,9 +62,9 @@ func SerializePublicKey(key crypto.PublicKey) []byte {
 	case *ec.PublicKey:
 		switch t.Algorithm {
 		case ec.ECDSA:
-			buf.WriteByte(PK_ECDSA)
+			buf.WriteByte(byte(PK_ECDSA))
 		case ec.SM2:
-			buf.WriteByte(PK_SM2)
+			buf.WriteByte(byte(PK_SM2))
 		}
 		label, err := ec.GetCurveLabel(t.Curve)
 		if err != nil {
@@ -81,7 +81,7 @@ func SerializePublicKey(key crypto.PublicKey) []byte {
 
 // DeserializePublicKey parse the byte sequencce to a public key.
 func DeserializePublicKey(data []byte) (crypto.PublicKey, error) {
-	switch data[0] {
+	switch KeyType(data[0]) {
 	case PK_ECDSA, PK_SM2:
 		c, err := ec.GetCurve(data[1])
 		if err != nil {
@@ -96,7 +96,7 @@ func DeserializePublicKey(data []byte) (crypto.PublicKey, error) {
 			PublicKey: pub,
 		}
 
-		switch data[0] {
+		switch KeyType(data[0]) {
 		case PK_ECDSA:
 			pk.Algorithm = ec.ECDSA
 		case PK_SM2:
