@@ -46,20 +46,14 @@ func (s SignatureScheme) Name() string {
 	return names[s]
 }
 
-var defaultScheme SignatureScheme = SHA256withECDSA
-
-func SetDefaultScheme(s string) error {
+func GetScheme(name string) (SignatureScheme, error) {
 	for i, v := range names {
-		if strings.ToUpper(v) == strings.ToUpper(s) {
-			defaultScheme = SignatureScheme(i)
-			return nil
+		if strings.ToUpper(v) == strings.ToUpper(name) {
+			return SignatureScheme(i), nil
 		}
 	}
 
-	return errors.New(fmt.Sprintf(
-		"unknown signature scheme %s, use %s as default",
-		s, defaultScheme.Name(),
-	))
+	return 0, errors.New("unknown signature scheme " + name)
 }
 
 func GetHash(scheme SignatureScheme) hash.Hash {

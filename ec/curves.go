@@ -20,20 +20,7 @@ const (
 )
 
 func GetCurveLabel(c elliptic.Curve) (byte, error) {
-	switch strings.ToUpper(c.Params().Name) {
-	case strings.ToUpper(elliptic.P224().Params().Name):
-		return P224, nil
-	case strings.ToUpper(elliptic.P256().Params().Name):
-		return P256, nil
-	case strings.ToUpper(elliptic.P384().Params().Name):
-		return P384, nil
-	case strings.ToUpper(elliptic.P521().Params().Name):
-		return P521, nil
-	case strings.ToUpper(sm2.SM2P256V1().Params().Name):
-		return SM2P256V1, nil
-	default:
-		return 0, errors.New("unsupported elliptic curve")
-	}
+	return GetNamedCurveLabel(c.Params().Name)
 }
 
 func GetCurve(label byte) (elliptic.Curve, error) {
@@ -52,4 +39,29 @@ func GetCurve(label byte) (elliptic.Curve, error) {
 		return nil, errors.New("unknown elliptic curve")
 	}
 
+}
+
+func GetNamedCurve(name string) (elliptic.Curve, error) {
+	label, err := GetNamedCurveLabel(name)
+	if err != nil {
+		return nil, err
+	}
+	return GetCurve(label)
+}
+
+func GetNamedCurveLabel(name string) (byte, error) {
+	switch strings.ToUpper(name) {
+	case strings.ToUpper(elliptic.P224().Params().Name):
+		return P224, nil
+	case strings.ToUpper(elliptic.P256().Params().Name):
+		return P256, nil
+	case strings.ToUpper(elliptic.P384().Params().Name):
+		return P384, nil
+	case strings.ToUpper(elliptic.P521().Params().Name):
+		return P521, nil
+	case strings.ToUpper(sm2.SM2P256V1().Params().Name):
+		return SM2P256V1, nil
+	default:
+		return 0, errors.New("unsupported elliptic curve")
+	}
 }
