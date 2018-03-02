@@ -3,17 +3,18 @@
 package sm2
 
 import (
-	"math/big"
-	"crypto/sha512"
-	"crypto/cipher"
 	"bytes"
-	"ont-crypto/sm3"
 	"crypto/aes"
-	"crypto/rand"
-	"errors"
-	"io"
+	"crypto/cipher"
 	"crypto/ecdsa"
+	"crypto/rand"
+	"crypto/sha512"
+	"errors"
 	"fmt"
+	"io"
+	"math/big"
+
+	"github.com/OntologyNetwork/ont-crypto/sm3"
 )
 
 const DIGESTLEN = 32
@@ -22,18 +23,18 @@ func sm3kdf(zInput []byte, kLen int) ([]byte, int) {
 	rLen := kLen
 	zLen := len(zInput)
 
-	zz := make([]byte, zLen + 4)
+	zz := make([]byte, zLen+4)
 	for i := 0; i < zLen; i++ {
 		zz[i] = zInput[i]
 	}
 
 	var pp []byte
 	i := 1
-	for ;rLen > 0; {
-		zz[zLen] = byte (i >> 24) & 0xff
-		zz[zLen + 1] = byte (i >> 16) & 0xFF
-		zz[zLen + 2] = byte (i >> 8) & 0xFF
-		zz[zLen + 3] = byte (i) & 0xff
+	for rLen > 0 {
+		zz[zLen] = byte(i>>24) & 0xff
+		zz[zLen+1] = byte(i>>16) & 0xFF
+		zz[zLen+2] = byte(i>>8) & 0xFF
+		zz[zLen+3] = byte(i) & 0xff
 		digest := sm3.Sum(zz)
 
 		if rLen >= DIGESTLEN {
@@ -56,13 +57,12 @@ func sm3kdf(zInput []byte, kLen int) ([]byte, int) {
 		}
 	}
 
-	if rLen > 0	{
+	if rLen > 0 {
 		return pp, len(pp)
 	} else {
 		return nil, 0
 	}
 }
-
 
 func Encrypt(pub *ecdsa.PublicKey, data []byte) ([]byte, error) {
 	var c *SM2Curve
@@ -72,7 +72,7 @@ func Encrypt(pub *ecdsa.PublicKey, data []byte) ([]byte, error) {
 		c = t
 	}
 
-	encryptData := make([]byte, 96 + len(data))
+	encryptData := make([]byte, 96+len(data))
 
 	hash := sm3.Sum(data)
 	entropyLen := (c.BitSize + 7) / 16
@@ -116,13 +116,13 @@ func Encrypt(pub *ecdsa.PublicKey, data []byte) ([]byte, error) {
 		}
 
 		x1, y1 := c.ScalarBaseMult(k.Bytes())
-		copy(encryptData[32 - len(x1.Bytes()):],x1.Bytes())
-		copy(encryptData[64 - len(y1.Bytes()):],y1.Bytes())
+		copy(encryptData[32-len(x1.Bytes()):], x1.Bytes())
+		copy(encryptData[64-len(y1.Bytes()):], y1.Bytes())
 
 		x2, y2 = c.ScalarMult(pub.X, pub.Y, k.Bytes())
 		x2y2 := make([]byte, 64)
-		copy(x2y2[32 - len(x2.Bytes()):], x2.Bytes())
-		copy(x2y2[64 - len(y2.Bytes()):], y2.Bytes())
+		copy(x2y2[32-len(x2.Bytes()):], x2.Bytes())
+		copy(x2y2[64-len(y2.Bytes()):], y2.Bytes())
 
 		t, ret := sm3kdf(x2y2, len(data))
 		if ret == 0 {
@@ -135,14 +135,14 @@ func Encrypt(pub *ecdsa.PublicKey, data []byte) ([]byte, error) {
 		break
 	}
 
-	tmp := make([]byte, 32 + len(data) + 32)
-	copy(tmp[32 - len(x2.Bytes()):], x2.Bytes())
+	tmp := make([]byte, 32+len(data)+32)
+	copy(tmp[32-len(x2.Bytes()):], x2.Bytes())
 	copy(tmp[32:], data)
-	copy(tmp[len(tmp) - 32:], y2.Bytes())
+	copy(tmp[len(tmp)-32:], y2.Bytes())
 	c3 := sm3.Sum(tmp)
 
-	copy(encryptData[64:],c3[:])
-	copy(encryptData[96:],c2)
+	copy(encryptData[64:], c3[:])
+	copy(encryptData[96:], c2)
 
 	return encryptData, nil
 }
@@ -161,8 +161,8 @@ func Decrypt(priv *ecdsa.PrivateKey, encryptData []byte) ([]byte, error) {
 	x2, y2 := c.ScalarMult(x1, y1, priv.D.Bytes())
 	c2 := make([]byte, 64)
 
-	copy(c2[32 - len(x2.Bytes()):], x2.Bytes())
-	copy(c2[64 - len(y2.Bytes()):], y2.Bytes())
+	copy(c2[32-len(x2.Bytes()):], x2.Bytes())
+	copy(c2[64-len(y2.Bytes()):], y2.Bytes())
 
 	MsgLen := len(encryptData) - 96
 	t, ret := sm3kdf(c2, MsgLen)
@@ -175,13 +175,13 @@ func Decrypt(priv *ecdsa.PrivateKey, encryptData []byte) ([]byte, error) {
 		Msg[i] = encryptData[96:][i] ^ t[i]
 	}
 
-	tmp := make([]byte, 32 + len(Msg) + 32)
-	copy(tmp[32 - len(x2.Bytes()):], x2.Bytes())
+	tmp := make([]byte, 32+len(Msg)+32)
+	copy(tmp[32-len(x2.Bytes()):], x2.Bytes())
 	copy(tmp[32:], Msg)
-	copy(tmp[len(tmp) - 32:], y2.Bytes())
+	copy(tmp[len(tmp)-32:], y2.Bytes())
 	c3 := sm3.Sum(tmp)
 
-	if 0 != bytes.Compare(c3[:], encryptData[64:96]){
+	if 0 != bytes.Compare(c3[:], encryptData[64:96]) {
 		return Msg, errors.New("Hash not match!")
 	}
 	return Msg, nil
