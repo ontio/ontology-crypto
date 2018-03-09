@@ -6,8 +6,11 @@ import (
 	"crypto/ecdsa"
 	"crypto/rand"
 	"errors"
+	"fmt"
 	"io"
 	"math/big"
+
+	"golang.org/x/crypto/ed25519"
 
 	"github.com/OntologyNetwork/ont-crypto/ec"
 	"github.com/OntologyNetwork/ont-crypto/sm2"
@@ -27,24 +30,33 @@ type SM2Signature struct {
 	ID string
 }
 
-func Sign(scheme SignatureScheme, pri crypto.PrivateKey, msg []byte, opt interface{}) (*Signature, error) {
-	hasher := GetHash(scheme)
-	if hasher == nil {
-		return nil, errors.New("unknown signature scheme")
-	}
+func Sign(scheme SignatureScheme, pri crypto.PrivateKey, msg []byte, opt interface{}) (sig *Signature, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			sig = nil
+			err = errors.New(fmt.Sprintf("Failed signing:", r))
+		}
+	}()
 
 	var res Signature
 	res.Scheme = scheme
 	switch key := pri.(type) {
 	case *ec.PrivateKey:
+		hasher := GetHash(scheme)
+		if hasher == nil {
+			err = errors.New("unknown signature scheme")
+			return
+		}
+
 		if scheme == SM3withSM2 {
 			id := ""
 			if opt, ok := opt.(string); ok {
 				id = opt
 			}
-			r, s, err := sm2.Sign(rand.Reader, key.PrivateKey, id, msg, hasher)
-			if err != nil {
-				return nil, err
+			r, s, err0 := sm2.Sign(rand.Reader, key.PrivateKey, id, msg, hasher)
+			if err0 != nil {
+				err = err0
+				return
 			}
 			res.Value = &SM2Signature{
 				ID:           id,
@@ -53,23 +65,36 @@ func Sign(scheme SignatureScheme, pri crypto.PrivateKey, msg []byte, opt interfa
 		} else if scheme == SHA256withECDSA ||
 			scheme == SHA512withECDSA {
 			digest := hasher.Sum(msg)
-			r, s, err := ecdsa.Sign(rand.Reader, key.PrivateKey, digest)
-			if err != nil {
-				return nil, err
+			r, s, err0 := ecdsa.Sign(rand.Reader, key.PrivateKey, digest)
+			if err0 != nil {
+				err = err0
+				return
 			}
 			res.Value = &DSASignature{R: r, S: s}
 		} else {
-			return nil, errors.New("unmatched signature algorithm and private key")
+			err = errors.New("unmatched signature algorithm and private key")
+			return
 		}
 
+	case ed25519.PrivateKey:
+		res.Value = ed25519.Sign(key, msg)
+
 	default:
-		return nil, errors.New("unknown type of private key")
+		err = errors.New("unknown type of private key")
+		return
 	}
 
-	return &res, nil
+	sig = &res
+	return
 }
 
 func Verify(pub crypto.PublicKey, msg []byte, sig *Signature) bool {
+	defer func() {
+		if r := recover(); r != nil {
+			return // do nothing, just catch the panic
+		}
+	}()
+
 	if len(msg) == 0 || sig == nil {
 		return false
 	}
@@ -94,6 +119,11 @@ func Verify(pub crypto.PublicKey, msg []byte, sig *Signature) bool {
 				res = sm2.Verify(key.PublicKey, v.ID, msg, h, v.R, v.S)
 			}
 		}
+	case ed25519.PublicKey:
+		if sig.Scheme == SHA512withEDDSA {
+			v := sig.Value.([]byte)
+			res = ed25519.Verify(key, msg, v)
+		}
 	}
 
 	return res
@@ -105,6 +135,7 @@ func Serialize(sig *Signature) ([]byte, error) {
 	}
 
 	var buf bytes.Buffer
+	buf.WriteByte(byte(sig.Scheme))
 	switch v := sig.Value.(type) {
 	case *DSASignature:
 		if sig.Scheme != SHA224withECDSA ||
@@ -115,16 +146,16 @@ func Serialize(sig *Signature) ([]byte, error) {
 			return nil, errors.New("failed serializing signature: unmatched signature scheme and value")
 		}
 
-		buf.WriteByte(byte(sig.Scheme))
 		serializeDSA(v, &buf)
 	case *SM2Signature:
 		if sig.Scheme != SM3withSM2 {
 			return nil, errors.New("failed serializing signature: unmatched signature scheme and value")
 		}
-		buf.WriteByte(byte(sig.Scheme))
 		buf.Write([]byte(v.ID))
 		buf.WriteByte(byte(0))
 		serializeDSA(&v.DSASignature, &buf)
+	case []byte:
+		buf.Write(v)
 	default:
 		return nil, errors.New("failed serializing signature: unrecognized signature type")
 	}
@@ -161,6 +192,8 @@ func Deserialize(buf []byte) (*Signature, error) {
 			return nil, errors.New(e + err.Error())
 		}
 		sig.Value = &SM2Signature{ID: id, DSASignature: *dsa}
+	case SHA512withEDDSA:
+		sig.Value = buf[1:]
 	default:
 		return nil, errors.New(e + "unknown signature scheme")
 	}

@@ -24,6 +24,8 @@ const (
 	RIPEMD160withECDSA
 
 	SM3withSM2
+
+	SHA512withEDDSA
 )
 
 var names []string = []string{
@@ -37,6 +39,7 @@ var names []string = []string{
 	"SHA3-512withECDSA",
 	"RIPEMD160withECDSA",
 	"SM3withSM2",
+	"SHA512withEdDSA",
 }
 
 func (s SignatureScheme) Name() string {
@@ -78,6 +81,8 @@ func GetHash(scheme SignatureScheme) hash.Hash {
 		return crypto.RIPEMD160.New()
 	case SM3withSM2:
 		return sm3.New()
+	case SHA512withEDDSA:
+		return crypto.SHA512.New()
 	}
 	return nil
 }

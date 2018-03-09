@@ -10,13 +10,13 @@ import (
 
 const (
 	// ECDSA curve label
-	P224 = 1
-	P256 = 2
-	P384 = 3
-	P521 = 4
+	P224 byte = 1
+	P256 byte = 2
+	P384 byte = 3
+	P521 byte = 4
 
 	// SM2 curve label
-	SM2P256V1 = 20
+	SM2P256V1 byte = 20
 )
 
 func GetCurveLabel(c elliptic.Curve) (byte, error) {
