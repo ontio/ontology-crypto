@@ -14,7 +14,7 @@ import (
 	"io"
 	"math/big"
 
-	"github.com/OntologyNetwork/ont-crypto/sm3"
+	"github.com/ontio/ontology-crypto/sm3"
 )
 
 const DIGESTLEN = 32

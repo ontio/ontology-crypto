@@ -13,9 +13,10 @@ import (
 	"crypto"
 	"crypto/rand"
 	"errors"
-	"golang.org/x/crypto/ed25519"
 
-	"github.com/OntologyNetwork/ont-crypto/ec"
+	"github.com/ontio/ontology-crypto/ec"
+
+	"golang.org/x/crypto/ed25519"
 )
 
 type KeyType byte
@@ -25,8 +26,6 @@ const (
 	PK_ECDSA KeyType = 0x12
 	PK_SM2   KeyType = 0x13
 	PK_EDDSA KeyType = 0x14
-
-	ED25519 byte = 1
 )
 
 const err_generate = "key pair generation failed, "
@@ -44,7 +43,7 @@ func GenerateKeyPair(t KeyType, opts interface{}) (crypto.PrivateKey, crypto.Pub
 		if !ok {
 			return nil, nil, errors.New(err_generate + "invalid EC options, 1 byte curve label excepted")
 		}
-		c, err := ec.GetCurve(param)
+		c, err := GetCurve(param)
 		if err != nil {
 			return nil, nil, errors.New(err_generate + err.Error())
 		}
@@ -83,7 +82,7 @@ func SerializePublicKey(key crypto.PublicKey) []byte {
 		case ec.SM2:
 			buf.WriteByte(byte(PK_SM2))
 		}
-		label, err := ec.GetCurveLabel(t.Curve)
+		label, err := GetCurveLabel(t.Curve)
 		if err != nil {
 			panic(err)
 		}
@@ -104,7 +103,7 @@ func SerializePublicKey(key crypto.PublicKey) []byte {
 func DeserializePublicKey(data []byte) (crypto.PublicKey, error) {
 	switch KeyType(data[0]) {
 	case PK_ECDSA, PK_SM2:
-		c, err := ec.GetCurve(data[1])
+		c, err := GetCurve(data[1])
 		if err != nil {
 			return nil, err
 		}

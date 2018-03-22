@@ -1,11 +1,11 @@
-package ec
+package keypair
 
 import (
 	"crypto/elliptic"
 	"errors"
 	"strings"
 
-	"github.com/OntologyNetwork/ont-crypto/sm2"
+	"github.com/ontio/ontology-crypto/sm2"
 )
 
 const (
@@ -17,6 +17,9 @@ const (
 
 	// SM2 curve label
 	SM2P256V1 byte = 20
+
+	// ED25519 curve label
+	ED25519 byte = 25
 )
 
 func GetCurveLabel(c elliptic.Curve) (byte, error) {

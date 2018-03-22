@@ -5,7 +5,7 @@ import (
 	"crypto"
 	"reflect"
 
-	"github.com/OntologyNetwork/ont-crypto/ec"
+	"github.com/ontio/ontology-crypto/ec"
 )
 
 // KeyIndex finds the specified public key in the list and returns its index
