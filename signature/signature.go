@@ -44,7 +44,7 @@ func Sign(scheme SignatureScheme, pri crypto.PrivateKey, msg []byte, opt interfa
 	case *ec.PrivateKey:
 		hasher := GetHash(scheme)
 		if hasher == nil {
-			err = errors.New("unknown signature scheme")
+			err = errors.New("unknown scheme")
 			return
 		}
 
@@ -62,8 +62,16 @@ func Sign(scheme SignatureScheme, pri crypto.PrivateKey, msg []byte, opt interfa
 				ID:           id,
 				DSASignature: DSASignature{R: r, S: s},
 			}
-		} else if scheme == SHA256withECDSA ||
-			scheme == SHA512withECDSA {
+		} else if scheme == SHA224withECDSA ||
+			scheme == SHA256withECDSA ||
+			scheme == SHA384withECDSA ||
+			scheme == SHA512withECDSA ||
+			scheme == SHA3_224withECDSA ||
+			scheme == SHA3_256withECDSA ||
+			scheme == SHA3_384withECDSA ||
+			scheme == SHA3_512withECDSA ||
+			scheme == RIPEMD160withECDSA {
+
 			digest := hasher.Sum(msg)
 			r, s, err0 := ecdsa.Sign(rand.Reader, key.PrivateKey, digest)
 			if err0 != nil {
@@ -138,10 +146,14 @@ func Serialize(sig *Signature) ([]byte, error) {
 	buf.WriteByte(byte(sig.Scheme))
 	switch v := sig.Value.(type) {
 	case *DSASignature:
-		if sig.Scheme != SHA224withECDSA ||
-			sig.Scheme != SHA256withECDSA ||
-			sig.Scheme != SHA384withECDSA ||
-			sig.Scheme != SHA512withECDSA ||
+		if sig.Scheme != SHA224withECDSA &&
+			sig.Scheme != SHA256withECDSA &&
+			sig.Scheme != SHA384withECDSA &&
+			sig.Scheme != SHA512withECDSA &&
+			sig.Scheme != SHA3_224withECDSA &&
+			sig.Scheme != SHA3_256withECDSA &&
+			sig.Scheme != SHA3_384withECDSA &&
+			sig.Scheme != SHA3_512withECDSA &&
 			sig.Scheme != RIPEMD160withECDSA {
 			return nil, errors.New("failed serializing signature: unmatched signature scheme and value")
 		}

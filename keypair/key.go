@@ -62,7 +62,8 @@ func GenerateKeyPair(t KeyType, opts interface{}) (crypto.PrivateKey, crypto.Pub
 		}
 
 		if param == ED25519 {
-			return ed25519.GenerateKey(rand.Reader)
+			pub, pri, err := ed25519.GenerateKey(rand.Reader)
+			return pri, pub, err
 		} else {
 			return nil, nil, errors.New(err_generate + "unsupported EdDSA scheme")
 		}

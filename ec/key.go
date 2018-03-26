@@ -1,6 +1,7 @@
 package ec
 
 import (
+	"crypto"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"errors"
@@ -29,6 +30,10 @@ type PrivateKey struct {
 type PublicKey struct {
 	Algorithm ECAlgorithm
 	*ecdsa.PublicKey
+}
+
+func (this *PrivateKey) Public() crypto.PublicKey {
+	return &PublicKey{Algorithm: this.Algorithm, PublicKey: &this.PublicKey}
 }
 
 func GenerateECKeyPair(c elliptic.Curve, rand io.Reader, alg ECAlgorithm) (*PrivateKey, *PublicKey, error) {
@@ -84,12 +89,15 @@ func DecodePublicKey(data []byte, curve elliptic.Curve) (*ecdsa.PublicKey, error
 	}
 
 	length := (curve.Params().BitSize + 7) >> 3
+	if len(data) < length+1 {
+		return nil, errors.New("invalid data length")
+	}
 
 	var x, y *big.Int
 	x = new(big.Int).SetBytes(data[1 : length+1])
 	if data[0] == nocompress {
 		if len(data) < length*2+1 {
-			return nil, errors.New("Invalid byte length")
+			return nil, errors.New("invalid data length")
 		}
 		y = new(big.Int).SetBytes(data[length+1 : length*2+1])
 		//TODO verify whether (x,y) is on the curve
