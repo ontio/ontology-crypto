@@ -2,12 +2,11 @@ package keypair
 
 import (
 	"bytes"
-	"crypto"
 )
 
 // FindKey finds the specified public key in the list and returns its index
 // or -1 if not found.
-func FindKey(list []crypto.PublicKey, key crypto.PublicKey) int {
+func FindKey(list []PublicKey, key PublicKey) int {
 	for i, v := range list {
 		if ComparePublicKey(v, key) {
 			return i
@@ -33,7 +32,7 @@ func (l PublicList) Swap(i, j int) {
 }
 
 // ConvertToPublicList converts the public keys to a PublicList.
-func NewPublicList(keys []crypto.PublicKey) PublicList {
+func NewPublicList(keys []PublicKey) PublicList {
 	res := make(PublicList, 0, len(keys))
 	for _, k := range keys {
 		res = append(res, SerializePublicKey(k))

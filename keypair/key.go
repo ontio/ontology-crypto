@@ -20,6 +20,13 @@ import (
 	"golang.org/x/crypto/ed25519"
 )
 
+type PublicKey crypto.PublicKey
+
+type PrivateKey interface {
+	crypto.PrivateKey
+	Public() crypto.PublicKey
+}
+
 type KeyType byte
 
 // Supported key types
@@ -37,7 +44,7 @@ const err_generate = "key pair generation failed, "
 //     SM2:   same as ECDSA
 //     EdDSA: a byte specifies the EdDSA scheme
 //
-func GenerateKeyPair(t KeyType, opts interface{}) (crypto.PrivateKey, crypto.PublicKey, error) {
+func GenerateKeyPair(t KeyType, opts interface{}) (PrivateKey, PublicKey, error) {
 	switch t {
 	case PK_ECDSA, PK_SM2:
 		param, ok := opts.(byte)
@@ -73,7 +80,7 @@ func GenerateKeyPair(t KeyType, opts interface{}) (crypto.PrivateKey, crypto.Pub
 }
 
 // SerializePublicKey serializes the public key to a byte sequence.
-func SerializePublicKey(key crypto.PublicKey) []byte {
+func SerializePublicKey(key PublicKey) []byte {
 	var buf bytes.Buffer
 	switch t := key.(type) {
 	case *ec.PublicKey:
@@ -101,7 +108,7 @@ func SerializePublicKey(key crypto.PublicKey) []byte {
 }
 
 // DeserializePublicKey parse the byte sequencce to a public key.
-func DeserializePublicKey(data []byte) (crypto.PublicKey, error) {
+func DeserializePublicKey(data []byte) (PublicKey, error) {
 	switch KeyType(data[0]) {
 	case PK_ECDSA, PK_SM2:
 		c, err := GetCurve(data[1])
@@ -141,7 +148,7 @@ func DeserializePublicKey(data []byte) (crypto.PublicKey, error) {
 
 }
 
-func SerializePrivateKey(pri crypto.PrivateKey) []byte {
+func SerializePrivateKey(pri PrivateKey) []byte {
 	var buf bytes.Buffer
 	switch t := pri.(type) {
 	case *ec.PrivateKey:
@@ -172,7 +179,7 @@ func SerializePrivateKey(pri crypto.PrivateKey) []byte {
 	return buf.Bytes()
 }
 
-func DeserializePrivateKey(data []byte) (pri crypto.PrivateKey, pub crypto.PublicKey, err error) {
+func DeserializePrivateKey(data []byte) (pri PrivateKey, err error) {
 	switch KeyType(data[0]) {
 	case PK_ECDSA, PK_SM2:
 		c, err1 := GetCurve(data[1])
@@ -207,20 +214,16 @@ func DeserializePrivateKey(data []byte) (pri crypto.PrivateKey, pub crypto.Publi
 		case PK_SM2:
 			key.Algorithm = ec.SM2
 		}
-
 		pri = key
-		pub = key.Public()
 
 	case PK_EDDSA:
-		key := ed25519.PrivateKey(data[1:])
-		pri = key
-		pub = key.Public()
+		pri = ed25519.PrivateKey(data[1:])
 	}
 	return
 }
 
 // ComparePublicKey checks whether the two public key k0 and k1 are the same.
-func ComparePublicKey(k0, k1 crypto.PublicKey) bool {
+func ComparePublicKey(k0, k1 PublicKey) bool {
 	if reflect.TypeOf(k0) != reflect.TypeOf(k1) {
 		return false
 	}
