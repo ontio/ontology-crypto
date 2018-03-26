@@ -1,15 +1,32 @@
+/*
+ * Copyright (C) 2018 The ontology Authors
+ * This file is part of The ontology library.
+ *
+ * The ontology is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * The ontology is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with The ontology.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 package sm2
 
 import (
-	//"DNA/crypto/util"
+	"crypto/ecdsa"
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
 	"io"
+	"math/big"
 	"reflect"
 	"testing"
-	"crypto/ecdsa"
-	"math/big"
 )
 
 type Sm2Data struct {
@@ -57,9 +74,9 @@ func TestSm3Kdf(t *testing.T) {
 }
 
 func TestSm2Dec(t *testing.T) {
-	d, _ :=  new(big.Int).SetString(testcase_Dec.privkey, 16)
-	x, _ :=  new(big.Int).SetString(testcase_Dec.pubkey_x, 16)
-	y, _ :=  new(big.Int).SetString(testcase_Dec.pubkey_y, 16)
+	d, _ := new(big.Int).SetString(testcase_Dec.privkey, 16)
+	x, _ := new(big.Int).SetString(testcase_Dec.pubkey_x, 16)
+	y, _ := new(big.Int).SetString(testcase_Dec.pubkey_y, 16)
 
 	cur := SM2P256V1()
 	priKey := ecdsa.PrivateKey{
@@ -68,7 +85,7 @@ func TestSm2Dec(t *testing.T) {
 			X:     x,
 			Y:     y,
 			Curve: cur,
-		},}
+		}}
 
 	m, _ := hex.DecodeString(testcase_Dec.message)
 	c, _ := hex.DecodeString(testcase_Dec.cipher)
@@ -94,7 +111,7 @@ func TestSm2Enc(t *testing.T) {
 			msg := make([]byte, i)
 			_, _ = io.ReadFull(rand.Reader, msg[:])
 
-			c,  err := Encrypt(pubKey, msg)
+			c, err := Encrypt(pubKey, msg)
 			if err != nil {
 				fmt.Println(err)
 				t.Error("sm2 enc error!")
