@@ -60,8 +60,7 @@ const err_generate = "key pair generation failed, "
 // opts is the necessary parameter(s), which is defined by the key type:
 //     ECDSA: a byte specifies the elliptic curve, which defined in package ec
 //     SM2:   same as ECDSA
-//     EdDSA: a byte specifies the EdDSA scheme
-//
+//     EdDSA: a byte specifies the curve, only ED25519 supported currently.
 func GenerateKeyPair(t KeyType, opts interface{}) (PrivateKey, PublicKey, error) {
 	switch t {
 	case PK_ECDSA, PK_SM2:
@@ -97,7 +96,26 @@ func GenerateKeyPair(t KeyType, opts interface{}) (PrivateKey, PublicKey, error)
 	}
 }
 
-// SerializePublicKey serializes the public key to a byte sequence.
+// SerializePublicKey serializes the public key to a byte sequence as the
+// following format:
+//         |--------------------|-----------------|
+//         | algorithm (1 byte) | public_key_data |
+//         |--------------------|-----------------|
+//
+// public_key_data differs in the algorithm:
+//
+// - ECDSA & SM2
+//         |----------------|--------------------|
+//         | curve (1 byte) | encoded_public_key |
+//         |----------------|--------------------|
+//   encoded_public_key is the public key encoded in compression mode.
+//
+// - EdDSA
+//   Since only Ed25519 supported currently, it is just the 1 byte curve label
+//   followed by the byte sequence which could be handled as public key in
+//   package ed25519.
+//
+// This function will panic if error occurs.
 func SerializePublicKey(key PublicKey) []byte {
 	var buf bytes.Buffer
 	switch t := key.(type) {
@@ -166,6 +184,28 @@ func DeserializePublicKey(data []byte) (PublicKey, error) {
 
 }
 
+// SerializePrivateKey serializes the input private key into byte array as the
+// following format:
+//              |--------------------|------------------|
+//              | algorithm (1 byte) | private_key_data |
+//              |--------------------|------------------|
+//
+// The private_key_data differs in algorithm:
+//
+// - ECDSA & SM2
+//           |----------------|---------|--------------------|
+//           | curve (1 byte) | d_bytes | encoded_public_key |
+//           |----------------|---------|--------------------|
+//   d_bytes is the byte sequence converted from the integer d in little
+//   endian, with the byte length specified by the curve.
+//   encoded_public_key is the public key data encoded in comopression mode.
+//
+// - EdDSA
+//   Since only Ed25519 supported currently, it is just the 1 byte Ed25519
+//   curve label followed by the byte sequence which could be handled as
+//   private key in package ed25519.
+//
+// This function will panic if error occurs.
 func SerializePrivateKey(pri PrivateKey) []byte {
 	var buf bytes.Buffer
 	switch t := pri.(type) {
@@ -190,6 +230,7 @@ func SerializePrivateKey(pri PrivateKey) []byte {
 		buf.Write(ec.EncodePublicKey(&t.PublicKey, true))
 	case ed25519.PrivateKey:
 		buf.WriteByte(byte(PK_EDDSA))
+		buf.WriteByte(byte(ED25519))
 		buf.Write(t)
 	default:
 		panic("unkown private key type")
@@ -197,6 +238,7 @@ func SerializePrivateKey(pri PrivateKey) []byte {
 	return buf.Bytes()
 }
 
+// DeserializePrivateKey parses the input byte array into private key.
 func DeserializePrivateKey(data []byte) (pri PrivateKey, err error) {
 	switch KeyType(data[0]) {
 	case PK_ECDSA, PK_SM2:
@@ -235,12 +277,17 @@ func DeserializePrivateKey(data []byte) (pri PrivateKey, err error) {
 		pri = key
 
 	case PK_EDDSA:
-		pri = ed25519.PrivateKey(data[1:])
+		if data[1] == ED25519 {
+			pri = ed25519.PrivateKey(data[2:])
+		} else {
+			err = errors.New("unknown EdDSA curve type")
+			return
+		}
 	}
 	return
 }
 
-// ComparePublicKey checks whether the two public key k0 and k1 are the same.
+// ComparePublicKey checks whether the two public key are the same.
 func ComparePublicKey(k0, k1 PublicKey) bool {
 	if reflect.TypeOf(k0) != reflect.TypeOf(k1) {
 		return false
