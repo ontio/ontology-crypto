@@ -48,6 +48,13 @@ type SM2Signature struct {
 	ID string
 }
 
+// Sign generates the signature for the input message @msg, using private key
+// @pri and the signature scheme @scheme.
+//
+// Some signature scheme may use extra parameters, which could be inputted via
+// the last argument @opt:
+// - SM2 signature needs the user ID (string). If it is an empty string, the
+//   default ID ("1234567812345678") would be used.
 func Sign(scheme SignatureScheme, pri crypto.PrivateKey, msg []byte, opt interface{}) (sig *Signature, err error) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -114,6 +121,8 @@ func Sign(scheme SignatureScheme, pri crypto.PrivateKey, msg []byte, opt interfa
 	return
 }
 
+// Verify checks whether @sig is a valid signature for @msg with the public key
+// @pub, and return true/false as the result.
 func Verify(pub crypto.PublicKey, msg []byte, sig *Signature) bool {
 	defer func() {
 		if r := recover(); r != nil {
@@ -155,6 +164,19 @@ func Verify(pub crypto.PublicKey, msg []byte, sig *Signature) bool {
 	return res
 }
 
+// Serialize the signature object to byte array as the following format:
+//
+//     |---------------------------|-----------------|
+//     | signature_scheme (1 byte) | signature_data  |
+//     |---------------------------|-----------------|
+//
+// signature_data differs in the signature algorithm.
+// - For ECDSA, it is the concatenation of two byte arrays of equal length
+//   converted from R and S.
+// - For SM2, it starts with the user ID (empty if not specified) with a `0`
+//   as termination, and followed by the R and S data as described in ECDSA.
+// - For EdDSA, it is just the signature data which could be handled by package
+//   ed25519.
 func Serialize(sig *Signature) ([]byte, error) {
 	if sig == nil {
 		return nil, errors.New("failed serializing signature: input is nil")
@@ -193,6 +215,7 @@ func Serialize(sig *Signature) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+// Deserialize the input data into a Signature object.
 func Deserialize(buf []byte) (*Signature, error) {
 	e := "failed deserializing signature: "
 	if buf == nil || len(buf) < 2 {

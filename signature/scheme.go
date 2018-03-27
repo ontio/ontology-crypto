@@ -26,6 +26,12 @@ import (
 	"strings"
 
 	"github.com/ontio/ontology-crypto/sm3"
+
+	// the following blank imports ensures these packages are linked
+	_ "crypto/sha256"
+	_ "crypto/sha512"
+	_ "golang.org/x/crypto/ripemd160"
+	_ "golang.org/x/crypto/sha3"
 )
 
 type SignatureScheme byte
