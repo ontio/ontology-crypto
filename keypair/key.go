@@ -249,7 +249,7 @@ func ComparePublicKey(k0, k1 PublicKey) bool {
 	switch v0 := k0.(type) {
 	case *ec.PublicKey:
 		v1 := k1.(*ec.PublicKey)
-		if v0.Algorithm == v1.Algorithm && v0.Params().Name == v1.Params().Name && v0.X == v1.X {
+		if v0.Algorithm == v1.Algorithm && v0.Params().Name == v1.Params().Name && v0.X.Cmp(v1.X) == 0 {
 			return true
 		}
 
