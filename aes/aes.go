@@ -60,9 +60,7 @@ func AesDecrypt(ciphertext []byte, key []byte, iv []byte) ([]byte, error) {
 
 	plaintext := make([]byte, len(ciphertext))
 	blockModel.CryptBlocks(plaintext, ciphertext)
-	plaintext = PKCS5UnPadding(plaintext)
-
-	return plaintext, nil
+	return PKCS5UnPadding(plaintext)
 }
 
 func PKCS5Padding(src []byte, blockSize int) []byte {
@@ -72,8 +70,11 @@ func PKCS5Padding(src []byte, blockSize int) []byte {
 	return append(src, padtext...)
 }
 
-func PKCS5UnPadding(src []byte) []byte {
+func PKCS5UnPadding(src []byte) ([]byte, error) {
 	length := len(src)
 	unpadding := int(src[length-1])
-	return src[:(length - unpadding)]
+	if unpadding > length {
+		return nil, errors.New("unpadding error: invalid paddding length")
+	}
+	return src[:(length - unpadding)], nil
 }
