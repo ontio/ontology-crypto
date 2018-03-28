@@ -97,7 +97,8 @@ func Sign(scheme SignatureScheme, pri crypto.PrivateKey, msg []byte, opt interfa
 			scheme == SHA3_512withECDSA ||
 			scheme == RIPEMD160withECDSA {
 
-			digest := hasher.Sum(msg)
+			hasher.Write(msg)
+			digest := hasher.Sum(nil)
 			r, s, err0 := ecdsa.Sign(rand.Reader, key.PrivateKey, digest)
 			if err0 != nil {
 				err = err0
@@ -144,9 +145,10 @@ func Verify(pub crypto.PublicKey, msg []byte, sig *Signature) bool {
 	switch key := pub.(type) {
 	case *ec.PublicKey:
 		switch sig.Scheme {
-		case SHA224withECDSA, SHA256withECDSA, SHA384withECDSA, SHA512withECDSA, RIPEMD160withECDSA:
+		case SHA224withECDSA, SHA256withECDSA, SHA384withECDSA, SHA512withECDSA, SHA3_224withECDSA, SHA3_256withECDSA, SHA3_384withECDSA, SHA3_512withECDSA, RIPEMD160withECDSA:
 			if v, ok := sig.Value.(*DSASignature); ok {
-				digest := h.Sum(msg)
+				h.Write(msg)
+				digest := h.Sum(nil)
 				res = ecdsa.Verify(key.PublicKey, digest, v.R, v.S)
 			}
 		case SM3withSM2:

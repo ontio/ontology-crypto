@@ -20,6 +20,13 @@ buf := keypair.SerializePublicKey(public)
 public, err := keypair.DeserializePublicKey(buf)
 ```
 
+Available key types:
+
+    PK_ECDSA
+    PK_SM2
+    PK_EDDSA
+
+
 ## Signature
 
 ```go

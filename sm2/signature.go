@@ -104,14 +104,15 @@ func getZ(msg []byte, pub *ecdsa.PublicKey, userID string, hasher hash.Hash) ([]
 	hasher.Write(c.Params().Gy.Bytes())
 	hasher.Write(pub.X.Bytes())
 	hasher.Write(pub.Y.Bytes())
-	return append(hasher.Sum(make([]byte, 0)), msg...), nil
+	return append(hasher.Sum(nil), msg...), nil
 }
 
 // Sign generates signature for the input message using the private key and id.
 // It returns (r, s) as the signature or error.
 func Sign(rand io.Reader, priv *ecdsa.PrivateKey, id string, msg []byte, hasher hash.Hash) (r, s *big.Int, err error) {
 	mz, err := getZ(msg, &priv.PublicKey, id, hasher)
-	digest := hasher.Sum(mz)
+	hasher.Write(mz)
+	digest := hasher.Sum(nil)
 
 	entropyLen := (priv.Params().BitSize + 7) >> 4
 	if entropyLen > 32 {
@@ -206,7 +207,8 @@ func Verify(pub *ecdsa.PublicKey, id string, msg []byte, hasher hash.Hash, r, s 
 		return false
 	}
 
-	digest := hasher.Sum(mz)
+	hasher.Write(mz)
+	digest := hasher.Sum(nil)
 	e := new(big.Int).SetBytes(digest[:])
 	x.Add(x, e)
 	x.Mod(x, N)
