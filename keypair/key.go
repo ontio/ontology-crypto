@@ -145,6 +145,9 @@ func SerializePublicKey(key PublicKey) []byte {
 
 // DeserializePublicKey parse the byte sequencce to a public key.
 func DeserializePublicKey(data []byte) (PublicKey, error) {
+	if len(data) <= 3 {
+		return nil, errors.New("too short pubkey")
+	}
 	switch KeyType(data[0]) {
 	case PK_ECDSA, PK_SM2:
 		c, err := GetCurve(data[1])
