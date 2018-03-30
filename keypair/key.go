@@ -31,6 +31,7 @@ import (
 	"crypto"
 	"crypto/rand"
 	"errors"
+	"fmt"
 	"reflect"
 
 	"github.com/ontio/ontology-crypto/ec"
@@ -169,20 +170,23 @@ func DeserializePublicKey(data []byte) (PublicKey, error) {
 		case PK_SM2:
 			pk.Algorithm = ec.SM2
 		default:
-			return nil, errors.New("unknown EC algorithm")
+			return nil, errors.New("deserializing public key failed: unknown EC algorithm")
 		}
 
 		return pk, nil
 
 	case PK_EDDSA:
 		if data[1] == ED25519 {
+			if len(data[2:]) < ed25519.PublicKeySize {
+				return nil, errors.New("deserializing public key failed: not enough length for Ed25519 key")
+			}
 			return ed25519.PublicKey(data[2:]), nil
 		} else {
-			return nil, errors.New("unsupported EdDSA scheme")
+			return nil, errors.New("deserializing public key failed: unsupported EdDSA scheme")
 		}
 
 	default:
-		return nil, errors.New("unrecognized algorithm label")
+		return nil, errors.New("deserializing public key failed: unrecognized algorithm label")
 	}
 
 }
@@ -252,7 +256,7 @@ func DeserializePrivateKey(data []byte) (pri PrivateKey, err error) {
 		}
 		size := (c.Params().BitSize + 7) >> 3
 		if len(data) < size*2+3 {
-			err = errors.New("invalid key data: not enough length")
+			err = errors.New("deserializing private key failed: not enough length")
 			return
 		}
 
@@ -261,13 +265,13 @@ func DeserializePrivateKey(data []byte) (pri PrivateKey, err error) {
 			PrivateKey: ec.ConstructPrivateKey(data[2:2+size], c),
 		}
 
-		p, err1 := ec.DecodePublicKey(data[2+size:3+2*size], c)
+		p, err1 := ec.DecodePublicKey(data[2+size:], c)
 		if err1 != nil {
-			err = errors.New("failed deserializing private key")
+			err = fmt.Errorf("deserializing private key failed: %s", err1)
 			return
 		}
 		if key.X.Cmp(p.X) != 0 || key.Y.Cmp(p.Y) != 0 {
-			err = errors.New("unmatched private key and public key")
+			err = errors.New("deserializing private key failed: unmatched private and public key")
 			return
 		}
 
@@ -281,9 +285,13 @@ func DeserializePrivateKey(data []byte) (pri PrivateKey, err error) {
 
 	case PK_EDDSA:
 		if data[1] == ED25519 {
+			if len(data) < 2+ed25519.PrivateKeySize {
+				err = errors.New("deserializing private key failed: not enough length for Ed25519 key")
+				return
+			}
 			pri = ed25519.PrivateKey(data[2:])
 		} else {
-			err = errors.New("unknown EdDSA curve type")
+			err = errors.New("deserializing private key failed: unknown EdDSA curve type")
 			return
 		}
 	}

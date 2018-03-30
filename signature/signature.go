@@ -24,7 +24,6 @@ import (
 	"crypto/ecdsa"
 	"crypto/rand"
 	"errors"
-	"fmt"
 	"io"
 	"math/big"
 
@@ -56,20 +55,13 @@ type SM2Signature struct {
 // - SM2 signature needs the user ID (string). If it is an empty string, the
 //   default ID ("1234567812345678") would be used.
 func Sign(scheme SignatureScheme, pri crypto.PrivateKey, msg []byte, opt interface{}) (sig *Signature, err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			sig = nil
-			err = errors.New(fmt.Sprintf("Failed signing:", r))
-		}
-	}()
-
 	var res Signature
 	res.Scheme = scheme
 	switch key := pri.(type) {
 	case *ec.PrivateKey:
 		hasher := GetHash(scheme)
 		if hasher == nil {
-			err = errors.New("unknown scheme")
+			err = errors.New("signing failed: unknown scheme")
 			return
 		}
 
@@ -106,15 +98,19 @@ func Sign(scheme SignatureScheme, pri crypto.PrivateKey, msg []byte, opt interfa
 			}
 			res.Value = &DSASignature{R: r, S: s}
 		} else {
-			err = errors.New("unmatched signature algorithm and private key")
+			err = errors.New("signing failed: unmatched signature scheme and private key")
 			return
 		}
 
 	case ed25519.PrivateKey:
+		if scheme != SHA512withEDDSA {
+			err = errors.New("signing failed: unmatched signature scheme and private key")
+			return
+		}
 		res.Value = ed25519.Sign(key, msg)
 
 	default:
-		err = errors.New("unknown type of private key")
+		err = errors.New("signing failed: unknown type of private key")
 		return
 	}
 
@@ -125,12 +121,6 @@ func Sign(scheme SignatureScheme, pri crypto.PrivateKey, msg []byte, opt interfa
 // Verify checks whether @sig is a valid signature for @msg with the public key
 // @pub, and return true/false as the result.
 func Verify(pub crypto.PublicKey, msg []byte, sig *Signature) bool {
-	defer func() {
-		if r := recover(); r != nil {
-			return // do nothing, just catch the panic
-		}
-	}()
-
 	if len(msg) == 0 || sig == nil {
 		return false
 	}
