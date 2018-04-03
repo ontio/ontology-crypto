@@ -21,11 +21,13 @@ var keys = map[string]keySize{
 	"33":{33,[]uint8{0x01,0x01,0x23,0x45,0x67,0x89,0xab,0xcd,0xef,0xfe,0xdc,0xba,0x98,0x76,0x54,0x32,0x10,0x01,0x23,0x45,0x67,0x89,0xab,0xcd,0xef,0xfe,0xdc,0xba,0x98,0x76,0x54,0x32,0x10}},
 }
 
-const datasize = 1 //MB
+const B = 1 //KB
+const KB = 1024 //KB
+const MB = 1024*1024 //MB
 var iv = []uint8{0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 
 func TestKeysize(t *testing.T) {
-	N := datasize*1024*1024
+	N := 1*MB
 	data := make([]byte,N, N)
 	for i:=0 ; i<N ; i++ {data[i]=byte(rand.Int()%256)}
 
@@ -38,38 +40,58 @@ func TestKeysize(t *testing.T) {
 		p,err := AesDecrypt(c,v.key,iv)
 		if err!=nil {
 			t.Errorf("decrypt has error! keysize is %v byte, err_info:%v \n",k,err)
-		}
-
-		if !bytes.Equal(data, p) {
-			t.Errorf("decypher and plaintext is not euqal! \n")
+		}else{
+			if !bytes.Equal(data, p) {
+				t.Errorf("decypher and plaintext is not euqal! \n")
+			}
 		}
 	}
+}
 
+func TestDatasize(t *testing.T) {
+	N := 0
+	N = 0*B
+	check(t,N,keys["16"] )
+	N = 1*B
+	check(t,N,keys["16"] )
+	N = 1*KB
+	check(t,N,keys["16"] )
+	N = 1*MB
+	check(t,N,keys["16"] )
+	N = 10*MB
+	check(t,N,keys["16"] )
+	N = 100*MB
+	check(t,N,keys["16"] )
+	N = 1000*MB
+	check(t,N,keys["16"] )
 }
 
 func TestCorrectness(t *testing.T) {
-	N := datasize*1024*1024
-	data := make([]byte,N, N)
-	for i:=0 ; i<N ; i++ {data[i]=byte(rand.Int()%256)}
+	N := 1*MB
+	check(t,N,keys["16"] )
+}
+func TestChinese(t *testing.T) {
+	data := "一去二三里"
+	//for i:=0 ; i<N ; i++ {data[i]=byte(rand.Int()%256)}
 
-	c,err := AesEncrypt(data,keys["16"].key,iv)
+	c,err := AesEncrypt([]byte(data),keys["16"].key,iv)
+
 	if err!=nil {
-		t.Errorf("encrypt has error! err_info:%v \n",err)
+		t.Errorf("encrypt has error! data is [%v], keysize is %v byte, err_info:%v \n",data, keys["16"].key, err)
 	}
 
 	p,err := AesDecrypt(c,keys["16"].key,iv)
 	if err!=nil {
-		t.Errorf("decrypt has error! err_info:%v \n",err)
+		t.Errorf("decrypt has error! data is [%v], keysize is %v byte, err_info:%v \n",data, keys["16"].key, err)
+	}else{
+		if !bytes.Equal([]byte(data), p) {
+			t.Errorf("decypher and plaintext is not euqal! \n")
+		}
 	}
-
-	if !bytes.Equal(data, p) {
-		t.Errorf("CBC mode has error! \n")
-	}
-
 }
 
 func BenchmarkLoopsForCbcEnc(b *testing.B) {
-	N := datasize*1024*1024
+	N := 1*MB
 	b.SetBytes(int64(N))
 	b.ReportAllocs()
 	data := make([]byte,N, N)
@@ -82,7 +104,7 @@ func BenchmarkLoopsForCbcEnc(b *testing.B) {
 }
 
 func BenchmarkLoopsForCbcDec(b *testing.B) {
-	N := datasize*1024*1024
+	N := 1*MB
 	b.SetBytes(int64(N))
 	b.ReportAllocs()
 	data := make([]byte,N, N)
@@ -94,3 +116,25 @@ func BenchmarkLoopsForCbcDec(b *testing.B) {
 		AesDecrypt(c,keys["16"].key,iv)
 	}
 }
+
+
+func check(t *testing.T, N int, onekey keySize) {
+	data := make([]byte,N, N)
+	for i:=0 ; i<N ; i++ {data[i]=byte(rand.Int()%256)}
+
+	c,err := AesEncrypt(data,onekey.key,iv)
+
+	if err!=nil {
+		t.Errorf("encrypt has error! keysize is %v byte, err_info:%v \n",onekey.size, err)
+	}
+
+	p,err := AesDecrypt(c,keys["16"].key,iv)
+	if err!=nil {
+		t.Errorf("decrypt has error! keysize is %v byte, err_info:%v \n",onekey.size,err)
+	}else{
+		if !bytes.Equal(data, p) {
+			t.Errorf("decypher and plaintext is not euqal! \n")
+		}
+	}
+}
+
