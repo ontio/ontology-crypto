@@ -68,7 +68,7 @@ func TestDatasize(t *testing.T) {
 
 func TestCorrectness(t *testing.T) {
 	N := 1*MB
-	check(t,N,keys["16"] )
+	check(t,N,keys["16"])
 }
 func TestChinese(t *testing.T) {
 	data := "一去二三里"
