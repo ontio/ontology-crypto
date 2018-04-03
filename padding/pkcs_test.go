@@ -2,8 +2,6 @@ package padding
 
 import (
 	"bytes"
-	//"bytes"
-	//"errors"
 	"math/rand"
 	"testing"
 )
