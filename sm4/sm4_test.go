@@ -6,22 +6,14 @@ import (
 	"testing"
 )
 
-//type sm4Test struct {
-//	desc string
-//	key []byte
-//	iv []byte
-//	plaintext []byte
-//	ciphertext []byte
-//
-//}
-const datasize = 1 //MB
+const MB = 1 //MB
 var key = []uint8{0x01,0x23,0x45,0x67,0x89,0xab,0xcd,0xef,0xfe,0xdc,0xba,0x98,0x76,0x54,0x32,0x10}
-var plain = []uint8{0x01,0x23,0x45,0x67,0x89,0xab,0xcd,0xef,0xfe,0xdc,0xba,0x98,0x76,0x54,0x32,0x10}
+//var plain = []uint8{0x01,0x23,0x45,0x67,0x89,0xab,0xcd,0xef,0xfe,0xdc,0xba,0x98,0x76,0x54,0x32,0x10}
 var iv = []uint8{0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
-var ad = []uint8{ }
+var ad = []uint8{0x00}
 
 func TestCorrectness(t *testing.T) {
-	N := datasize*1024*1024
+	N := MB*1024*1024
 	data := make([]byte,N, N)
 	for i:=0 ; i<N ; i++ {data[i]=byte(rand.Int()%256)}
 
@@ -42,7 +34,7 @@ func TestCorrectness(t *testing.T) {
 
 
 func BenchmarkLoopsForCbcEnc(b *testing.B) {
-	N := datasize*1024*1024
+	N := MB*1024*1024
 	b.SetBytes(int64(N))
 	b.ReportAllocs()
 	data := make([]byte,N, N)
@@ -55,7 +47,7 @@ func BenchmarkLoopsForCbcEnc(b *testing.B) {
 }
 
 func BenchmarkLoopsForCbcDec(b *testing.B) {
-	N := datasize*1024*1024
+	N := MB*1024*1024
 	b.SetBytes(int64(N))
 	b.ReportAllocs()
 	data := make([]byte,N, N)
@@ -69,7 +61,7 @@ func BenchmarkLoopsForCbcDec(b *testing.B) {
 }
 
 func BenchmarkLoopsForGcmEnc(b *testing.B) {
-	N := datasize*1024*1024
+	N := MB*1024*1024
 	b.SetBytes(int64(N))
 	b.ReportAllocs()
 	data := make([]byte,N, N)
@@ -82,7 +74,7 @@ func BenchmarkLoopsForGcmEnc(b *testing.B) {
 }
 
 func BenchmarkLoopsForGcmDec(b *testing.B) {
-	N := datasize*1024*1024
+	N := MB*1024*1024
 	b.SetBytes(int64(N))
 	b.ReportAllocs()
 	data := make([]byte,N, N)
