@@ -21,6 +21,7 @@ package sm2
 import (
 	"crypto/ecdsa"
 	"crypto/rand"
+	"crypto/sha256"
 	"math/big"
 	"testing"
 
@@ -34,17 +35,25 @@ var r_hex = "6e833daf8bd2cb5b09786a0ad5e6e5617242f8e60938f64afd11285e9d719a51"
 var s_hex = "bdf93e24fe552d716f9ef1e1ae477af8f39a06b5d86222e76cbe5f14c0f063b1"
 var msg = []byte("test message")
 
-func TestVerify(t *testing.T) {
+func restorePublicKey() *ecdsa.PublicKey {
 	x, _ := new(big.Int).SetString(x_hex, 16)
 	y, _ := new(big.Int).SetString(y_hex, 16)
-	pub := &ecdsa.PublicKey{
+	return &ecdsa.PublicKey{
 		Curve: SM2P256V1(),
 		X:     x,
 		Y:     y,
 	}
+}
 
-	r, _ := new(big.Int).SetString(r_hex, 16)
-	s, _ := new(big.Int).SetString(s_hex, 16)
+func restoreSignature() (r, s *big.Int) {
+	r, _ = new(big.Int).SetString(r_hex, 16)
+	s, _ = new(big.Int).SetString(s_hex, 16)
+	return
+}
+
+func TestVerify(t *testing.T) {
+	pub := restorePublicKey()
+	r, s := restoreSignature()
 
 	if !Verify(pub, "", msg, sm3.New(), r, s) {
 		t.Error("verification failed")
@@ -61,5 +70,24 @@ func TestSignAndVerify(t *testing.T) {
 
 	if !Verify(&pri.PublicKey, "", msg, hasher, r, s) {
 		t.Error("verification failed")
+	}
+}
+
+func BenchmarkSign(b *testing.B) {
+	pri, _ := ecdsa.GenerateKey(SM2P256V1(), rand.Reader)
+	hasher := sm3.New()
+
+	for i := 0; i < b.N; i++ {
+		Sign(rand.Reader, pri, "", msg, hasher)
+	}
+}
+
+func BenchmarkVerify(b *testing.B) {
+	pub := restorePublicKey()
+	r, s := restoreSignature()
+	hasher := sm3.New()
+
+	for i := 0; i < b.N; i++ {
+		Verify(pub, "", msg, hasher, r, s)
 	}
 }
