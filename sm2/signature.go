@@ -96,6 +96,7 @@ func getZ(msg []byte, pub *ecdsa.PublicKey, userID string, hasher hash.Hash) ([]
 	len := len(id) * 8
 	blen := []byte{byte((len >> 8) & 0xff), byte(len & 0xff)}
 
+	hasher.Reset()
 	hasher.Write(blen)
 	hasher.Write(id)
 	hasher.Write(c.A.Bytes())
@@ -104,13 +105,18 @@ func getZ(msg []byte, pub *ecdsa.PublicKey, userID string, hasher hash.Hash) ([]
 	hasher.Write(c.Params().Gy.Bytes())
 	hasher.Write(pub.X.Bytes())
 	hasher.Write(pub.Y.Bytes())
-	return append(hasher.Sum(nil), msg...), nil
+	h := hasher.Sum(nil)
+	return append(h, msg...), nil
 }
 
 // Sign generates signature for the input message using the private key and id.
 // It returns (r, s) as the signature or error.
 func Sign(rand io.Reader, priv *ecdsa.PrivateKey, id string, msg []byte, hasher hash.Hash) (r, s *big.Int, err error) {
 	mz, err := getZ(msg, &priv.PublicKey, id, hasher)
+	if err != nil {
+		return
+	}
+	hasher.Reset()
 	hasher.Write(mz)
 	digest := hasher.Sum(nil)
 
@@ -207,6 +213,7 @@ func Verify(pub *ecdsa.PublicKey, id string, msg []byte, hasher hash.Hash, r, s 
 		return false
 	}
 
+	hasher.Reset()
 	hasher.Write(mz)
 	digest := hasher.Sum(nil)
 	e := new(big.Int).SetBytes(digest[:])

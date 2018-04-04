@@ -107,7 +107,8 @@ func TestSm2Enc(t *testing.T) {
 	for j := 0; j < 1000; j++ {
 		for i := 1; i < 512; i++ {
 			fmt.Println("round ", j, i)
-			priKey, pubKey, _ := GenerateKeyPair(p256, rand.Reader)
+			priKey, _ := ecdsa.GenerateKey(p256, rand.Reader)
+			pubKey := &priKey.PublicKey
 			msg := make([]byte, i)
 			_, _ = io.ReadFull(rand.Reader, msg[:])
 
@@ -130,7 +131,8 @@ func TestSm2Enc(t *testing.T) {
 }
 
 func BenchmarkEnc(b *testing.B) {
-	_, pubKey, _ := GenerateKeyPair(p256, rand.Reader)
+	priKey, _ := ecdsa.GenerateKey(p256, rand.Reader)
+	pubKey := &priKey.PublicKey
 	msg := make([]byte, 256)
 	_, _ = io.ReadFull(rand.Reader, msg[:])
 	b.ResetTimer()
@@ -140,7 +142,7 @@ func BenchmarkEnc(b *testing.B) {
 }
 
 func BenchmarkDec(b *testing.B) {
-	priKey, _, _ := GenerateKeyPair(p256, rand.Reader)
+	priKey, _ := ecdsa.GenerateKey(p256, rand.Reader)
 	msg := make([]byte, 256)
 	_, _ = io.ReadFull(rand.Reader, msg[:])
 	b.ResetTimer()
