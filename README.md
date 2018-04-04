@@ -26,7 +26,7 @@ The Second argument differs from the key types:
 
 * as for to ECDSA, it indicates the curve which could be one of:
 
-    `P224, P256, P384, P512`
+    `P224, P256, P384, P521`
 
 * as for SM2, it indicates the curve similar to ECDSA but should be `SM2P256V1`.
 * as for EdDSA, it sould be `ED25519`.
