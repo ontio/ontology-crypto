@@ -16,14 +16,23 @@
  * along with The ontology.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+/*
+ * Package sm3 implements the Chinese SM3 Digest Algorithm,
+ * according to "go/src/crypto/sha256"
+ * author: weizhang <d5c5ceb0@gmail.com>
+ * 2017.02.24
+ */
+
 package sm3
 
 import (
 	"hash"
 )
 
+// The size of a SM3 checksum in bytes.
 const Size = 32
 
+// The blocksize of SM3 in bytes.
 const BlockSize = 64
 
 const (
@@ -38,6 +47,7 @@ const (
 	init7 = 0xB0FB0E4E
 )
 
+// digest represents the partial evaluation of a checksum.
 type digest struct {
 	h   [8]uint32
 	x   [chunk]byte
@@ -58,6 +68,7 @@ func (d *digest) Reset() {
 	d.len = 0
 }
 
+// New returns a new hash.Hash computing the SM3 checksum.
 func New() hash.Hash {
 	d := new(digest)
 	d.Reset()
@@ -92,6 +103,7 @@ func (d *digest) Write(p []byte) (nn int, err error) {
 }
 
 func (d0 *digest) Sum(in []byte) []byte {
+	// Make a copy of d0 so that caller can keep writing and summing.
 	d := *d0
 	hash := d.checkSum()
 	return append(in, hash[:]...)
@@ -99,6 +111,7 @@ func (d0 *digest) Sum(in []byte) []byte {
 
 func (d *digest) checkSum() [Size]byte {
 	len := d.len
+	// Padding. Add a 1 bit and 0 bits until 56 bytes mod 64.
 	var tmp [64]byte
 	tmp[0] = 0x80
 	if len%64 < 56 {
@@ -107,6 +120,7 @@ func (d *digest) checkSum() [Size]byte {
 		d.Write(tmp[0 : 64+56-len%64])
 	}
 
+	// Length in bits.
 	len <<= 3
 	for i := uint(0); i < 8; i++ {
 		tmp[i] = byte(len >> (56 - 8*i))
@@ -130,6 +144,7 @@ func (d *digest) checkSum() [Size]byte {
 	return digest
 }
 
+// Sum returns the SM3 checksum of the data.
 func Sum(data []byte) [Size]byte {
 	var d digest
 	d.Reset()

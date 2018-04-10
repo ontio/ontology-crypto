@@ -21,7 +21,6 @@ package sm2
 import (
 	"crypto/ecdsa"
 	"crypto/rand"
-	"crypto/sha256"
 	"math/big"
 	"testing"
 

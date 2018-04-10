@@ -82,8 +82,8 @@ func getZ(msg []byte, pub *ecdsa.PublicKey, userID string, hasher hash.Hash) ([]
 		return nil, errors.New("public key should not be nil")
 	}
 
-	var c *SM2Curve
-	if t, ok := pub.Curve.(*SM2Curve); !ok {
+	var c SM2Curve
+	if t, ok := pub.Curve.(SM2Curve); !ok {
 		return nil, errors.New("the curve type is not SM2Curve")
 	} else {
 		c = t
@@ -99,7 +99,7 @@ func getZ(msg []byte, pub *ecdsa.PublicKey, userID string, hasher hash.Hash) ([]
 	hasher.Reset()
 	hasher.Write(blen)
 	hasher.Write(id)
-	hasher.Write(c.A.Bytes())
+	hasher.Write(c.ABytes())
 	hasher.Write(c.Params().B.Bytes())
 	hasher.Write(c.Params().Gx.Bytes())
 	hasher.Write(c.Params().Gy.Bytes())

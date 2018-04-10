@@ -83,8 +83,8 @@ func sm3kdf(zInput []byte, kLen int) ([]byte, int) {
 }
 
 func Encrypt(pub *ecdsa.PublicKey, data []byte) ([]byte, error) {
-	var c *SM2Curve
-	if t, ok := pub.Curve.(*SM2Curve); !ok {
+	var c SM2Curve
+	if t, ok := pub.Curve.(SM2Curve); !ok {
 		return nil, errors.New("the curve type is not SM2Curve")
 	} else {
 		c = t
@@ -93,7 +93,7 @@ func Encrypt(pub *ecdsa.PublicKey, data []byte) ([]byte, error) {
 	encryptData := make([]byte, 96+len(data))
 
 	hash := sm3.Sum(data)
-	entropyLen := (c.BitSize + 7) / 16
+	entropyLen := (c.Params().BitSize + 7) / 16
 	if entropyLen > 32 {
 		entropyLen = 32
 	}
@@ -166,8 +166,8 @@ func Encrypt(pub *ecdsa.PublicKey, data []byte) ([]byte, error) {
 }
 
 func Decrypt(priv *ecdsa.PrivateKey, encryptData []byte) ([]byte, error) {
-	var c *SM2Curve
-	if t, ok := priv.Curve.(*SM2Curve); !ok {
+	var c SM2Curve
+	if t, ok := priv.Curve.(SM2Curve); !ok {
 		return nil, errors.New("the curve type is not SM2Curve")
 	} else {
 		c = t

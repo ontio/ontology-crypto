@@ -141,6 +141,7 @@ func TestSM2Key(t *testing.T) {
 
 	buf := SerializePublicKey(pub)
 	if !bytes.Equal(buf, pk) {
+		t.Errorf(hex.EncodeToString(buf))
 		t.Error("serialization error")
 	}
 
