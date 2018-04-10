@@ -19,10 +19,10 @@
 package aes
 
 import (
-	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
 	"errors"
+	"github.com/ontio/ontology-crypto/padding"
 )
 
 func AesEncrypt(plaintext []byte, key []byte, iv []byte) ([]byte, error) {
@@ -31,7 +31,7 @@ func AesEncrypt(plaintext []byte, key []byte, iv []byte) ([]byte, error) {
 		return nil, errors.New("invalid decrypt key")
 	}
 	blockSize := block.BlockSize()
-	plaintext = PKCS5Padding(plaintext, blockSize)
+	plaintext = padding.PKCS5Padding(plaintext, blockSize)
 	blockMode := cipher.NewCBCEncrypter(block, iv)
 
 	ciphertext := make([]byte, len(plaintext))
@@ -60,21 +60,5 @@ func AesDecrypt(ciphertext []byte, key []byte, iv []byte) ([]byte, error) {
 
 	plaintext := make([]byte, len(ciphertext))
 	blockModel.CryptBlocks(plaintext, ciphertext)
-	return PKCS5UnPadding(plaintext)
-}
-
-func PKCS5Padding(src []byte, blockSize int) []byte {
-	padding := blockSize - len(src)%blockSize
-	padtext := bytes.Repeat([]byte{byte(padding)}, padding)
-
-	return append(src, padtext...)
-}
-
-func PKCS5UnPadding(src []byte) ([]byte, error) {
-	length := len(src)
-	unpadding := int(src[length-1])
-	if unpadding > length {
-		return nil, errors.New("unpadding error: invalid paddding length")
-	}
-	return src[:(length - unpadding)], nil
+	return padding.PKCS5UnPadding(plaintext)
 }
