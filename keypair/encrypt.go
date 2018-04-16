@@ -11,14 +11,6 @@ import (
 	"golang.org/x/crypto/scrypt"
 )
 
-const (
-	// parameters used in scrypt
-	n    = 16384
-	r    = 8
-	p    = 8
-	klen = 64
-)
-
 // ProtectedKey stores the encrypted private key and related data
 type ProtectedKey struct {
 	Address string            `json:"address"`
@@ -29,12 +21,28 @@ type ProtectedKey struct {
 	Param   map[string]string `json:"parameters,omitempty"`
 }
 
+// ScryptParam contains the parameters used in scrypt function
+type ScryptParam struct {
+	P     int `json:"p"`
+	N     int `json:"n"`
+	R     int `json:"r"`
+	DKLen int `json:"dkLen,omitempty"`
+}
+
+const (
+	// parameters used in scrypt
+	n    = 16384
+	r    = 8
+	p    = 8
+	klen = 64
+)
+
 // Encrypt the private key with the given password.
 // The password is used to derive a key via scrypt function.
-// AES with CTR mode is used for encryption. The first 4 bytes of the derived
+// AES with CTR mode is used for encryption. The first 16 bytes of the derived
 // key is used as the initial vector (IV), and the last 32 bytes is used as the
 // encryption key.
-func EncryptPrivateKey(pri PrivateKey, addr, pwd string) (*ProtectedKey, error) {
+func EncryptPrivateKey(pri PrivateKey, addr string, pwd []byte) (*ProtectedKey, error) {
 	var res = ProtectedKey{
 		Address: addr,
 		Hash:    "sha256",
@@ -80,7 +88,7 @@ func EncryptPrivateKey(pri PrivateKey, addr, pwd string) (*ProtectedKey, error) 
 }
 
 // Decrypt the private key using the given password
-func DecryptPrivateKey(prot *ProtectedKey, pwd string) (PrivateKey, error) {
+func DecryptPrivateKey(prot *ProtectedKey, pwd []byte) (PrivateKey, error) {
 	if prot == nil || len(pwd) == 0 {
 		return nil, NewDecryptError("invalid argument")
 	}
@@ -127,7 +135,7 @@ func DecryptPrivateKey(prot *ProtectedKey, pwd string) (PrivateKey, error) {
 	}
 }
 
-func kdf(addr, pwd string) ([]byte, error) {
+func kdf(addr string, pwd []byte) ([]byte, error) {
 	// Hash the address twice to get the salt
 	digest := sha256.Sum256([]byte(addr))
 	digest = sha256.Sum256(digest[:])
@@ -145,4 +153,9 @@ func ctrCipher(data, key, iv []byte) ([]byte, error) {
 	stream := cipher.NewCTR(block, iv)
 	stream.XORKeyStream(ciphertext, data)
 	return ciphertext, nil
+}
+
+// Return the parameters used in scrypt function
+func GetScryptParameters() *ScryptParam {
+	return &ScryptParam{N: n, R: r, P: p, DKLen: klen}
 }

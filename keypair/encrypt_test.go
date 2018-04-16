@@ -19,7 +19,8 @@ func TestEncryptPrivate(t *testing.T) {
 		PrivateKey: ec.ConstructPrivateKey(D, elliptic.P256()),
 	}
 
-	c, err := EncryptPrivateKey(pri, "test address", "test password")
+	pwd := []byte("test password")
+	c, err := EncryptPrivateKey(pri, "test address", pwd)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -36,7 +37,7 @@ func TestEncryptPrivate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	pri1, err := DecryptPrivateKey(c, "test password")
+	pri1, err := DecryptPrivateKey(c, pwd)
 	if err != nil {
 		t.Fatal(err)
 	}
