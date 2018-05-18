@@ -160,17 +160,24 @@ func DecryptPrivateKey(prot *ProtectedKey, pwd []byte) (PrivateKey, error) {
 	}
 }
 
-func ReencryptPrivateKey(prot *ProtectedKey, oldPwd, newPwd []byte, param *ScryptParam) (*ProtectedKey, error) {
+// Re-encrypt the private key with the new password and scrypt parameters.
+// The old password and scrypt parameters are used for decryption first.
+// The scrypt parameters will be reseted to the default after this function.
+func ReencryptPrivateKey(prot *ProtectedKey, oldPwd, newPwd []byte, oldParam, newParam *ScryptParam) (*ProtectedKey, error) {
+	SetScryptParam(oldParam)
 	pri, err := DecryptPrivateKey(prot, oldPwd)
 	if err != nil {
 		return nil, err
 	}
-	SetScryptParam(param)
+	SetScryptParam(newParam)
 	newProt, err := EncryptPrivateKey(pri, prot.Address, newPwd)
 	SetScryptParam(nil)
 	return newProt, err
 }
 
+// Set the scrypt parameters.
+// This will change the global environments and effect following
+// encryption/decryption operations.
 func SetScryptParam(param *ScryptParam) {
 	if param == nil {
 		n = DEFAULT_N
