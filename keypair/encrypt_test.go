@@ -84,20 +84,20 @@ func TestReencrypt(t *testing.T) {
 		EncAlg:  "aes-256-ctr",
 		Param:   map[string]string{"curve": "P-256"},
 	}
-
-	sp := ScryptParam{
+	sp0 := GetScryptParameters()
+	sp1 := &ScryptParam{
 		N:     4096,
 		R:     8,
 		P:     8,
 		DKLen: 64,
 	}
 
-	pro1, err := ReencryptPrivateKey(&pro, pwd, pwd1, &sp)
+	pro1, err := ReencryptPrivateKey(&pro, pwd, pwd1, sp0, sp1)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	SetScryptParam(&sp)
+	SetScryptParam(sp1)
 	pri, err := DecryptPrivateKey(pro1, pwd1)
 	if err != nil {
 		t.Fatal(err)
