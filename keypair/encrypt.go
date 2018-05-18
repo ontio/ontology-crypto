@@ -1,3 +1,21 @@
+/*
+ * Copyright (C) 2018 The ontology Authors
+ * This file is part of The ontology library.
+ *
+ * The ontology is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * The ontology is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with The ontology.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 package keypair
 
 import (
@@ -30,11 +48,18 @@ type ScryptParam struct {
 }
 
 const (
+	DEFAULT_N                  = 16384
+	DEFAULT_R                  = 8
+	DEFAULT_P                  = 8
+	DEFAULT_DERIVED_KEY_LENGTH = 64
+)
+
+var (
 	// parameters used in scrypt
-	n    = 16384
-	r    = 8
-	p    = 8
-	klen = 64
+	n    = DEFAULT_N
+	r    = DEFAULT_R
+	p    = DEFAULT_P
+	klen = DEFAULT_DERIVED_KEY_LENGTH
 )
 
 // Encrypt the private key with the given password.
@@ -132,6 +157,31 @@ func DecryptPrivateKey(prot *ProtectedKey, pwd []byte) (PrivateKey, error) {
 		return ed25519.PrivateKey(plaintext), nil
 	default:
 		return nil, NewDecryptError("unknown key type")
+	}
+}
+
+func ReencryptPrivateKey(prot *ProtectedKey, oldPwd, newPwd []byte, param *ScryptParam) (*ProtectedKey, error) {
+	pri, err := DecryptPrivateKey(prot, oldPwd)
+	if err != nil {
+		return nil, err
+	}
+	SetScryptParam(param)
+	newProt, err := EncryptPrivateKey(pri, prot.Address, newPwd)
+	SetScryptParam(nil)
+	return newProt, err
+}
+
+func SetScryptParam(param *ScryptParam) {
+	if param == nil {
+		n = DEFAULT_N
+		p = DEFAULT_R
+		r = DEFAULT_P
+		klen = DEFAULT_DERIVED_KEY_LENGTH
+	} else {
+		n = param.N
+		p = param.P
+		r = param.R
+		klen = param.DKLen
 	}
 }
 
