@@ -29,6 +29,7 @@ package keypair
 import (
 	"bytes"
 	"crypto"
+	"crypto/elliptic"
 	"crypto/rand"
 	"errors"
 	"fmt"
@@ -53,6 +54,9 @@ const (
 	PK_ECDSA KeyType = 0x12
 	PK_SM2   KeyType = 0x13
 	PK_EDDSA KeyType = 0x14
+
+	PK_P256_E KeyType = 0x02
+	PK_P256_O KeyType = 0x03
 )
 
 const err_generate = "key pair generation failed, "
@@ -116,6 +120,10 @@ func GenerateKeyPair(t KeyType, opts interface{}) (PrivateKey, PublicKey, error)
 //   followed by the byte sequence which could be handled as public key in
 //   package ed25519.
 //
+// ECDSA public key with NIST P-256 curve is treated as a special case, which
+// just use the encoded data as the serialization and starts with 0x02 or 0x03,
+// with no flags ahead.
+//
 // This function will panic if error occurs.
 func SerializePublicKey(key PublicKey) []byte {
 	var buf bytes.Buffer
@@ -123,6 +131,10 @@ func SerializePublicKey(key PublicKey) []byte {
 	case *ec.PublicKey:
 		switch t.Algorithm {
 		case ec.ECDSA:
+			// Take P-256 as a special case
+			if t.Params().Name == elliptic.P256().Params().Name {
+				return ec.EncodePublicKey(t.PublicKey, true)
+			}
 			buf.WriteByte(byte(PK_ECDSA))
 		case ec.SM2:
 			buf.WriteByte(byte(PK_SM2))
@@ -159,11 +171,7 @@ func DeserializePublicKey(data []byte) (PublicKey, error) {
 		if err != nil {
 			return nil, err
 		}
-		pk := &ec.PublicKey{
-			Algorithm: ec.ECDSA,
-			PublicKey: pub,
-		}
-
+		pk := &ec.PublicKey{PublicKey: pub}
 		switch KeyType(data[0]) {
 		case PK_ECDSA:
 			pk.Algorithm = ec.ECDSA
@@ -184,6 +192,18 @@ func DeserializePublicKey(data []byte) (PublicKey, error) {
 		} else {
 			return nil, errors.New("deserializing public key failed: unsupported EdDSA scheme")
 		}
+
+	case PK_P256_E, PK_P256_O:
+		pub, err := ec.DecodePublicKey(data, elliptic.P256())
+		if err != nil {
+			return nil, errors.New("deserializing public key failed: decode P-256 public key error")
+		}
+
+		pk := &ec.PublicKey{
+			Algorithm: ec.ECDSA,
+			PublicKey: pub,
+		}
+		return pk, nil
 
 	default:
 		return nil, errors.New("deserializing public key failed: unrecognized algorithm label")

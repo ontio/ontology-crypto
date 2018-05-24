@@ -109,7 +109,7 @@ func TestECDSAKey(t *testing.T) {
 		},
 	}
 
-	pkBytes, _ := hex.DecodeString("12020272c2826f07f5e4f310e2f708689548f0d6d0e007603bdc7e6a2512c673db54df")
+	pkBytes, _ := hex.DecodeString("0272c2826f07f5e4f310e2f708689548f0d6d0e007603bdc7e6a2512c673db54df")
 
 	// Serialization
 	t.Log("Test ecdsa public key serialization")
