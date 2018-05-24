@@ -22,6 +22,7 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/sha256"
+	"errors"
 
 	"github.com/ontio/ontology-crypto/ec"
 
@@ -54,32 +55,31 @@ const (
 	DEFAULT_DERIVED_KEY_LENGTH = 64
 )
 
-var (
-	// parameters used in scrypt
-	n    = DEFAULT_N
-	r    = DEFAULT_R
-	p    = DEFAULT_P
-	klen = DEFAULT_DERIVED_KEY_LENGTH
-)
-
 // Encrypt the private key with the given password.
 // The password is used to derive a key via scrypt function.
 // AES with CTR mode is used for encryption. The first 16 bytes of the derived
 // key is used as the initial vector (IV), and the last 32 bytes is used as the
 // encryption key.
 func EncryptPrivateKey(pri PrivateKey, addr string, pwd []byte) (*ProtectedKey, error) {
+	return EncryptWithCustomScrypt(pri, addr, pwd, GetScryptParameters())
+}
+
+// Decrypt the private key using the given password
+func DecryptPrivateKey(prot *ProtectedKey, pwd []byte) (PrivateKey, error) {
+	return DecryptWithCustomScrypt(prot, pwd, GetScryptParameters())
+}
+
+func EncryptWithCustomScrypt(pri PrivateKey, addr string, pwd []byte, param *ScryptParam) (*ProtectedKey, error) {
 	var res = ProtectedKey{
 		Address: addr,
 		Hash:    "sha256",
 		EncAlg:  "aes-256-ctr",
 	}
 
-	dkey, err := kdf(addr, pwd)
+	iv, ekey, err := kdf(addr, pwd, param)
 	if err != nil {
 		return nil, NewEncryptError(err.Error())
 	}
-	iv := dkey[:16]
-	ekey := dkey[32:]
 
 	// Prepare the private key data for encryption
 	var plaintext []byte
@@ -112,8 +112,7 @@ func EncryptPrivateKey(pri PrivateKey, addr string, pwd []byte) (*ProtectedKey, 
 	return &res, nil
 }
 
-// Decrypt the private key using the given password
-func DecryptPrivateKey(prot *ProtectedKey, pwd []byte) (PrivateKey, error) {
+func DecryptWithCustomScrypt(prot *ProtectedKey, pwd []byte, param *ScryptParam) (PrivateKey, error) {
 	if prot == nil || len(pwd) == 0 {
 		return nil, NewDecryptError("invalid argument")
 	}
@@ -124,13 +123,13 @@ func DecryptPrivateKey(prot *ProtectedKey, pwd []byte) (PrivateKey, error) {
 	}
 
 	// Derive key
-	dkey, err := kdf(prot.Address, pwd)
+	iv, ekey, err := kdf(prot.Address, pwd, param)
 	if err != nil {
 		return nil, NewDecryptError(err.Error())
 	}
 
 	// Decryption, same process as encryption
-	plaintext, err := ctrCipher(prot.Key, dkey[32:], dkey[:16])
+	plaintext, err := ctrCipher(prot.Key, ekey, iv)
 	if err != nil {
 		return nil, NewDecryptError(err.Error())
 	}
@@ -164,40 +163,33 @@ func DecryptPrivateKey(prot *ProtectedKey, pwd []byte) (PrivateKey, error) {
 // The old password and scrypt parameters are used for decryption first.
 // The scrypt parameters will be reseted to the default after this function.
 func ReencryptPrivateKey(prot *ProtectedKey, oldPwd, newPwd []byte, oldParam, newParam *ScryptParam) (*ProtectedKey, error) {
-	SetScryptParam(oldParam)
-	pri, err := DecryptPrivateKey(prot, oldPwd)
+	pri, err := DecryptWithCustomScrypt(prot, oldPwd, oldParam)
 	if err != nil {
 		return nil, err
 	}
-	SetScryptParam(newParam)
-	newProt, err := EncryptPrivateKey(pri, prot.Address, newPwd)
-	SetScryptParam(nil)
+	newProt, err := EncryptWithCustomScrypt(pri, prot.Address, newPwd, newParam)
 	return newProt, err
 }
 
-// Set the scrypt parameters.
-// This will change the global environments and effect following
-// encryption/decryption operations.
-func SetScryptParam(param *ScryptParam) {
-	if param == nil {
-		n = DEFAULT_N
-		p = DEFAULT_R
-		r = DEFAULT_P
-		klen = DEFAULT_DERIVED_KEY_LENGTH
-	} else {
-		n = param.N
-		p = param.P
-		r = param.R
-		klen = param.DKLen
+func kdf(addr string, pwd []byte, param *ScryptParam) (iv, key []byte, err error) {
+	if param.DKLen < 32 {
+		err = errors.New("derived key length too short")
+		return
 	}
-}
 
-func kdf(addr string, pwd []byte) ([]byte, error) {
 	// Hash the address twice to get the salt
 	digest := sha256.Sum256([]byte(addr))
 	digest = sha256.Sum256(digest[:])
 	// Derive the encryption key
-	return scrypt.Key([]byte(pwd), digest[:4], n, r, p, klen)
+	dk, err0 := scrypt.Key([]byte(pwd), digest[:4], param.N, param.R, param.P, param.DKLen)
+	if err0 != nil {
+		err = err0
+		return
+	}
+
+	iv = dk[:16]
+	key = dk[len(dk)-32:]
+	return
 }
 
 func ctrCipher(data, key, iv []byte) ([]byte, error) {
@@ -212,7 +204,12 @@ func ctrCipher(data, key, iv []byte) ([]byte, error) {
 	return ciphertext, nil
 }
 
-// Return the parameters used in scrypt function
+// Return the default parameters used in scrypt function
 func GetScryptParameters() *ScryptParam {
-	return &ScryptParam{N: n, R: r, P: p, DKLen: klen}
+	return &ScryptParam{
+		N:     DEFAULT_N,
+		R:     DEFAULT_R,
+		P:     DEFAULT_P,
+		DKLen: DEFAULT_DERIVED_KEY_LENGTH,
+	}
 }

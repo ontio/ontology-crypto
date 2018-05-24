@@ -97,8 +97,7 @@ func TestReencrypt(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	SetScryptParam(sp1)
-	pri, err := DecryptPrivateKey(pro1, pwd1)
+	pri, err := DecryptWithCustomScrypt(pro1, pwd1, sp1)
 	if err != nil {
 		t.Fatal(err)
 	}
