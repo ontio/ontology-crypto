@@ -191,6 +191,7 @@ func Serialize(sig *Signature) ([]byte, error) {
 		}
 
 		serializeDSA(v, &buf)
+
 	case *SM2Signature:
 		if sig.Scheme != SM3withSM2 {
 			return nil, errors.New("failed serializing signature: unmatched signature scheme and value")
@@ -204,7 +205,15 @@ func Serialize(sig *Signature) ([]byte, error) {
 		return nil, errors.New("failed serializing signature: unrecognized signature type")
 	}
 
-	return buf.Bytes(), nil
+	res := buf.Bytes()
+
+	// Treat SHA256withECDSA as a special case, using the signature
+	// data directly without the signature scheme.
+	if sig.Scheme == SHA256withECDSA {
+		res = res[1:]
+	}
+
+	return res, nil
 }
 
 // Deserialize the input data into a Signature object.
@@ -215,30 +224,38 @@ func Deserialize(buf []byte) (*Signature, error) {
 	}
 
 	var sig Signature
-	sig.Scheme = SignatureScheme(buf[0])
+	var data []byte
+	if len(buf) == 64 {
+		data = buf
+		sig.Scheme = SHA256withECDSA
+	} else {
+		data = buf[1:]
+		sig.Scheme = SignatureScheme(buf[0])
+	}
+
 	switch sig.Scheme {
 	case SHA224withECDSA, SHA256withECDSA, SHA384withECDSA, SHA512withECDSA, RIPEMD160withECDSA:
-		dsa, err := deserializeDSA(buf[1:])
+		dsa, err := deserializeDSA(data)
 		if err != nil {
 			return nil, errors.New(e + err.Error())
 		}
 		sig.Value = dsa
 	case SM3withSM2:
-		i := 1
-		for i < len(buf) && buf[i] != 0 {
+		i := 0
+		for i < len(data) && data[i] != 0 {
 			i++
 		}
-		if i >= len(buf) {
+		if i >= len(data) {
 			return nil, errors.New(e + "invalid format")
 		}
-		id := string(buf[1:i])
-		dsa, err := deserializeDSA(buf[i+1:])
+		id := string(data[0:i])
+		dsa, err := deserializeDSA(data[i+1:])
 		if err != nil {
 			return nil, errors.New(e + err.Error())
 		}
 		sig.Value = &SM2Signature{ID: id, DSASignature: *dsa}
 	case SHA512withEDDSA:
-		sig.Value = buf[1:]
+		sig.Value = data
 	default:
 		return nil, errors.New(e + "unknown signature scheme")
 	}
