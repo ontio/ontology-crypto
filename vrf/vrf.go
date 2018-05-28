@@ -16,53 +16,74 @@
  * along with The ontology.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+//This package is a wrapper of verifiable random function using curve secp256r1.
 package vrf
 
 import (
 	"crypto/elliptic"
-	"fmt"
+	"errors"
 
+	"github.com/google/keytransparency/core/crypto/vrf/p256"
 	"github.com/ontio/ontology-crypto/ec"
 	"github.com/ontio/ontology-crypto/keypair"
-	"gitlab.com/abhvious/vrf/psvrf"
 )
 
-func Vrf(pri keypair.PrivateKey, msg []byte) ([]byte, []byte, error) {
+var (
+	ErrCurveNotSupported = errors.New("only support secp256r1 curve")
+	ErrKeyNotSupported   = errors.New("only support ECC key")
+	ErrEvalVRF           = errors.New("failed to evaluate vrf")
+)
+
+//Vrf returns the verifiable random function evaluated m and a NIZK proof
+func Vrf(pri keypair.PrivateKey, msg []byte) (vrf, nizk []byte, err error) {
 	switch t := pri.(type) {
 	case *ec.PrivateKey:
-		//currently psvrf only supports secp256r1 curve
+		//currently only supports secp256r1 curve
 		if t.Params().Gx.Cmp(elliptic.P256().Params().Gx) != 0 ||
 			t.Params().Gy.Cmp(elliptic.P256().Params().Gy) != 0 {
-			return nil, nil, fmt.Errorf("does not support")
+			return nil, nil, ErrCurveNotSupported
 		}
 
-		sk := new(psvrf.PrivateKey)
-		_, err := sk.Unmarshal(t.D.Bytes())
-		if err != nil {
-			return nil, nil, err
+		sk := new(p256.PrivateKey)
+		sk.PrivateKey = t.PrivateKey
+		_, proof := sk.Evaluate(msg)
+		if proof == nil || len(proof) != 64+65 {
+			return nil, nil, ErrEvalVRF
 		}
-		return sk.Vrf(msg)
+
+		nizk = proof[0:64]
+		vrf = proof[64 : 64+65]
+		err = nil
+		return
 
 	default:
-		return nil, nil, fmt.Errorf("does not support")
+		return nil, nil, ErrKeyNotSupported
 	}
 }
 
-func Verify(pub keypair.PublicKey, msg, vrf, proof []byte) (bool, error) {
+//Verify returns true if vrf and nizk is correct for msg
+func Verify(pub keypair.PublicKey, msg, vrf, nizk []byte) (bool, error) {
 	switch t := pub.(type) {
 	case *ec.PublicKey:
 		if t.Params().Gx.Cmp(elliptic.P256().Params().Gx) != 0 ||
 			t.Params().Gy.Cmp(elliptic.P256().Params().Gy) != 0 {
-			return false, fmt.Errorf("does not support")
+			return false, ErrCurveNotSupported
 		}
-		pk := new(psvrf.PublicKey)
-		_, err := pk.Unmarshal(elliptic.Marshal(t.Curve, t.X, t.Y))
+
+		pk := new(p256.PublicKey)
+		pk.PublicKey = t.PublicKey
+
+		if len(vrf) != 65 || len(nizk) != 64 {
+			return false, nil
+		}
+		proof := append(nizk, vrf...)
+		_, err := pk.ProofToHash(msg, proof)
 		if err != nil {
 			return false, err
 		}
 
-		return pk.Verify(msg, vrf, proof), nil
+		return true, nil
 	default:
-		return false, fmt.Errorf("does not support")
+		return false, ErrKeyNotSupported
 	}
 }
