@@ -44,3 +44,16 @@ func TestVrf(t *testing.T) {
 		t.Fatal("failed")
 	}
 }
+
+func BenchmarkVrf(b *testing.B) {
+	pri, _, err := keypair.GenerateKeyPair(keypair.PK_ECDSA, keypair.P256)
+	if err != nil {
+		b.Fatal(err)
+	}
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		msg := []byte("test")
+		Vrf(pri, msg)
+	}
+}
