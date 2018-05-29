@@ -101,6 +101,24 @@ func GenerateKeyPair(t KeyType, opts interface{}) (PrivateKey, PublicKey, error)
 	}
 }
 
+func GetKeyType(p PublicKey) KeyType {
+	switch t := p.(type) {
+	case *ec.PublicKey:
+		switch t.Algorithm {
+		case ec.ECDSA:
+			return PK_ECDSA
+		case ec.SM2:
+			return PK_SM2
+		default:
+			panic("unknown public key type")
+		}
+	case ed25519.PublicKey:
+		return PK_EDDSA
+	default:
+		panic("unknown public key type")
+	}
+}
+
 // SerializePublicKey serializes the public key to a byte sequence as the
 // following format:
 //         |--------------------|-----------------|
