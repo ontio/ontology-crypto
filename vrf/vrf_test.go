@@ -45,6 +45,40 @@ func TestVrf(t *testing.T) {
 	}
 }
 
+func TestInvalidKey(t *testing.T) {
+	pri, pub, err := keypair.GenerateKeyPair(keypair.PK_ECDSA, keypair.P224)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	isValid := ValidatePrivateKey(pri)
+	if isValid {
+		t.Fatal("should return false")
+	}
+
+	isValid = ValidatePublicKey(pub)
+	if isValid {
+		t.Fatal("should return false")
+	}
+}
+
+func TestValidKey(t *testing.T) {
+	pri, pub, err := keypair.GenerateKeyPair(keypair.PK_ECDSA, keypair.P256)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	isValid := ValidatePrivateKey(pri)
+	if !isValid {
+		t.Fatal("should return true")
+	}
+
+	isValid = ValidatePublicKey(pub)
+	if !isValid {
+		t.Fatal("should return true")
+	}
+}
+
 func BenchmarkVrf(b *testing.B) {
 	pri, _, err := keypair.GenerateKeyPair(keypair.PK_ECDSA, keypair.P256)
 	if err != nil {
