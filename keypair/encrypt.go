@@ -21,6 +21,7 @@ package keypair
 import (
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/rand"
 	"crypto/sha256"
 	"errors"
 
@@ -35,8 +36,9 @@ type ProtectedKey struct {
 	Address string            `json:"address"`
 	EncAlg  string            `json:"enc-alg"`
 	Key     []byte            `json:"key"`
-	Hash    string            `json:"hash"`
 	Alg     string            `json:"algorithm"`
+	Salt    []byte            `json:"salt,omitempty"`
+	Hash    string            `json:"hash,omitempty"`
 	Param   map[string]string `json:"parameters,omitempty"`
 }
 
@@ -55,11 +57,10 @@ const (
 	DEFAULT_DERIVED_KEY_LENGTH = 64
 )
 
-// Encrypt the private key with the given password.
-// The password is used to derive a key via scrypt function.
-// AES with CTR mode is used for encryption. The first 16 bytes of the derived
-// key is used as the initial vector (IV), and the last 32 bytes is used as the
-// encryption key.
+// Encrypt the private key with the given password. The password is used to
+// derive a key via scrypt function. AES with GCM mode is used for encryption.
+// The first 12 bytes of the derived key is used as the nonce, and the last 32
+// bytes is used as the encryption key.
 func EncryptPrivateKey(pri PrivateKey, addr string, pwd []byte) (*ProtectedKey, error) {
 	return EncryptWithCustomScrypt(pri, addr, pwd, GetScryptParameters())
 }
@@ -72,14 +73,21 @@ func DecryptPrivateKey(prot *ProtectedKey, pwd []byte) (PrivateKey, error) {
 func EncryptWithCustomScrypt(pri PrivateKey, addr string, pwd []byte, param *ScryptParam) (*ProtectedKey, error) {
 	var res = ProtectedKey{
 		Address: addr,
-		Hash:    "sha256",
-		EncAlg:  "aes-256-ctr",
+		EncAlg:  "aes-256-gcm",
 	}
 
-	iv, ekey, err := kdf(addr, pwd, param)
+	salt, err := randomBytes(12)
 	if err != nil {
 		return nil, NewEncryptError(err.Error())
 	}
+	res.Salt = salt
+
+	dkey, err := kdf(pwd, salt, param)
+	if err != nil {
+		return nil, NewEncryptError(err.Error())
+	}
+	nonce := dkey[:12]
+	ekey := dkey[len(dkey)-32:]
 
 	// Prepare the private key data for encryption
 	var plaintext []byte
@@ -103,12 +111,13 @@ func EncryptWithCustomScrypt(pri PrivateKey, addr string, pwd []byte, param *Scr
 		panic("unsupported key type")
 	}
 
-	ciphertext, err := ctrCipher(plaintext, ekey, iv)
+	gcm, err := gcmCipher(ekey)
 	if err != nil {
 		return nil, NewEncryptError(err.Error())
 	}
-	res.Key = ciphertext
 
+	ciphertext := gcm.Seal(nil, nonce, plaintext, []byte(addr))
+	res.Key = ciphertext
 	return &res, nil
 }
 
@@ -117,21 +126,43 @@ func DecryptWithCustomScrypt(prot *ProtectedKey, pwd []byte, param *ScryptParam)
 		return nil, NewDecryptError("invalid argument")
 	}
 
+	var plaintext []byte
+
 	// Check parameters
-	if prot.EncAlg != "aes-256-ctr" {
+	switch prot.EncAlg {
+	case "aes-256-gcm":
+		// generate random salt
+		salt := prot.Salt
+		dkey, err := kdf(pwd, salt, param)
+		if err != nil {
+			return nil, NewDecryptError(err.Error())
+		}
+		ekey := dkey[len(dkey)-32:]
+		nonce := dkey[:12]
+		gcm, err := gcmCipher(ekey)
+		plaintext, err = gcm.Open(nil, nonce, prot.Key, []byte(prot.Address))
+		if err != nil {
+			return nil, NewDecryptError(err.Error())
+		}
+	case "aes-256-ctr":
+		// ctr mode is remain for old accounts and should be removed later
+
+		// generate salt from the address
+		salt := saltFromAddress(prot.Address)
+		// derive key
+		dkey, err := kdf(pwd, salt, param)
+		if err != nil {
+			return nil, NewDecryptError(err.Error())
+		}
+		iv := dkey[:16]
+		ekey := dkey[len(dkey)-32:]
+		// Decryption, same process as encryption
+		plaintext, err = ctrCipher(prot.Key, ekey, iv)
+		if err != nil {
+			return nil, NewDecryptError(err.Error())
+		}
+	default:
 		return nil, NewDecryptError("unsupported encryption algorithm")
-	}
-
-	// Derive key
-	iv, ekey, err := kdf(prot.Address, pwd, param)
-	if err != nil {
-		return nil, NewDecryptError(err.Error())
-	}
-
-	// Decryption, same process as encryption
-	plaintext, err := ctrCipher(prot.Key, ekey, iv)
-	if err != nil {
-		return nil, NewDecryptError(err.Error())
 	}
 
 	switch prot.Alg {
@@ -171,25 +202,43 @@ func ReencryptPrivateKey(prot *ProtectedKey, oldPwd, newPwd []byte, oldParam, ne
 	return newProt, err
 }
 
-func kdf(addr string, pwd []byte, param *ScryptParam) (iv, key []byte, err error) {
+func randomBytes(length int) ([]byte, error) {
+	b := make([]byte, length)
+	_, err := rand.Read(b)
+	if err != nil {
+		return nil, err
+	}
+	return b, nil
+}
+
+func saltFromAddress(addr string) []byte {
+	// Hash the address twice to get the salt
+	digest := sha256.Sum256([]byte(addr))
+	digest = sha256.Sum256(digest[:])
+	return digest[:4]
+}
+
+func kdf(pwd []byte, salt []byte, param *ScryptParam) (dkey []byte, err error) {
 	if param.DKLen < 32 {
 		err = errors.New("derived key length too short")
 		return
 	}
 
-	// Hash the address twice to get the salt
-	digest := sha256.Sum256([]byte(addr))
-	digest = sha256.Sum256(digest[:])
 	// Derive the encryption key
-	dk, err0 := scrypt.Key([]byte(pwd), digest[:4], param.N, param.R, param.P, param.DKLen)
-	if err0 != nil {
-		err = err0
-		return
-	}
-
-	iv = dk[:16]
-	key = dk[len(dk)-32:]
+	dkey, err = scrypt.Key([]byte(pwd), salt, param.N, param.R, param.P, param.DKLen)
 	return
+}
+
+func gcmCipher(key []byte) (cipher.AEAD, error) {
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, err
+	}
+	return gcm, nil
 }
 
 func ctrCipher(data, key, iv []byte) ([]byte, error) {
