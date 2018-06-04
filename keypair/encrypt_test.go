@@ -35,9 +35,9 @@ var addr = "test address"
 var keyjson = `{
   "address":"test address",
   "enc-alg":"aes-256-gcm",
-  "key":"8bfELeEADFDw4eHkPbvZIAgYkNCvsxUMHdEU7ylS1QYgqt3RhIzOsDZPdM6RHtNs",
+  "key":"7qt5d2sdRb40QfH55KaRkNBbcAN9bKhurGwUVQ/7d68bsbGJSgldC/SoKNaqEp6t",
   "algorithm":"ECDSA",
-  "salt":"TTpMzpuoNkwfv6lt",
+  "salt":"f9IdwXxGK77/4x1whpBl1g==",
   "parameters":{"curve":"P-256"}
 }`
 

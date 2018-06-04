@@ -76,7 +76,7 @@ func EncryptWithCustomScrypt(pri PrivateKey, addr string, pwd []byte, param *Scr
 		EncAlg:  "aes-256-gcm",
 	}
 
-	salt, err := randomBytes(12)
+	salt, err := randomBytes(16)
 	if err != nil {
 		return nil, NewEncryptError(err.Error())
 	}
