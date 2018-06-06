@@ -208,30 +208,31 @@ func curveSqrt(ySquare *big.Int, curve *elliptic.CurveParams) *big.Int {
 }
 
 // deCompress is for computing the coordinate of Y based the coordinate of X
-func deCompress(yTilde int, xValue []byte, curve *elliptic.CurveParams) (*ecdsa.PublicKey, error) {
+func deCompress(yTilde int, xValue []byte, curve elliptic.Curve) (*ecdsa.PublicKey, error) {
 	xCoord := big.NewInt(0)
 	xCoord.SetBytes(xValue)
 
+	curveParams := curve.Params()
 	//y**2 = x**3 + A*x +B, A = -3, there is no A's clear definition in the realization of p256.
 	paramA := big.NewInt(-3)
 	//compute x**3 + A*x +B
 	ySqare := big.NewInt(0)
-	ySqare.Exp(xCoord, big.NewInt(2), curve.P)
+	ySqare.Exp(xCoord, big.NewInt(2), curveParams.P)
 	ySqare.Add(ySqare, paramA)
-	ySqare.Mod(ySqare, curve.P)
+	ySqare.Mod(ySqare, curveParams.P)
 	ySqare.Mul(ySqare, xCoord)
-	ySqare.Mod(ySqare, curve.P)
-	ySqare.Add(ySqare, curve.B)
-	ySqare.Mod(ySqare, curve.P)
+	ySqare.Mod(ySqare, curveParams.P)
+	ySqare.Add(ySqare, curveParams.B)
+	ySqare.Mod(ySqare, curveParams.P)
 
-	yValue := curveSqrt(ySqare, curve)
+	yValue := curveSqrt(ySqare, curveParams)
 	if nil == yValue {
 		return nil, errors.New("Invalid point compression")
 	}
 
 	yCoord := big.NewInt(0)
 	if (isEven(yValue) && 0 != yTilde) || (!isEven(yValue) && 1 != yTilde) {
-		yCoord.Sub(curve.P, yValue)
+		yCoord.Sub(curveParams.P, yValue)
 	} else {
 		yCoord.Set(yValue)
 	}
