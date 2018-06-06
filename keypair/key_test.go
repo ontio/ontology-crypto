@@ -165,3 +165,19 @@ func TestComparePublicKey(t *testing.T) {
 		t.Fatal("public keys not equal")
 	}
 }
+
+func BenchmarkDeserilize(b *testing.B) {
+	var opts byte
+	opts = P256
+	_, pub, _ := GenerateKeyPair(PK_ECDSA, opts)
+
+	serPub := SerializePublicKey(pub)
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		_, err := DeserializePublicKey(serPub)
+		if err != nil {
+			b.Fatal("bug")
+		}
+	}
+}
