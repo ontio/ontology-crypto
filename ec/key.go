@@ -123,24 +123,7 @@ func DecodePublicKey(data []byte, curve elliptic.Curve) (*ecdsa.PublicKey, error
 		//	return nil, errors.New("Point is not on the curve")
 		//}
 	} else if data[0] == compress_even || data[0] == compress_odd {
-		bi3 := big.NewInt(3)
-		y = new(big.Int).Exp(x, bi3, curve.Params().P)
-		a := new(big.Int).Sub(curve.Params().P, bi3)
-		ax := new(big.Int).Mul(x, a)
-		ax = ax.Mod(ax, curve.Params().P)
-		y = y.Add(y, ax)
-		y = y.Mod(y, curve.Params().P)
-		y = y.Add(y, curve.Params().B)
-		y = y.Mod(y, curve.Params().P)
-		y = new(big.Int).ModSqrt(y, curve.Params().P)
-
-		if y == nil {
-			return nil, errors.New("Invalid X value")
-		}
-
-		if y.Bit(0) != uint(data[0])&1 {
-			y = y.Sub(curve.Params().P, y)
-		}
+		return deCompress(int(data[0]&1), data[1:length+1], curve.Params())
 	} else {
 		return nil, errors.New("unknown encoding mode")
 	}
