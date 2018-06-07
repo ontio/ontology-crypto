@@ -44,6 +44,15 @@ func TestKeyPairGeneration(t *testing.T) {
 	testKeyGen(PK_EDDSA, ED25519, t)
 }
 
+func BenchmarkGenKeyPair(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		_, _, err := GenerateKeyPair(PK_ECDSA, P256)
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
 func testKeyGen(kt KeyType, param interface{}, t *testing.T) {
 	private, public, err := GenerateKeyPair(kt, param)
 	if err != nil {
@@ -179,5 +188,25 @@ func BenchmarkDeserilize(b *testing.B) {
 		if err != nil {
 			b.Fatal("bug")
 		}
+	}
+}
+
+func TestWIF(t *testing.T) {
+	wif := "KyaBriGFNXzaWf8Y7S1HxaCr1EhhFypdZYPdLJuFPqqW2d9cEtHw"
+	hf := "46358132e7d8dd2bfc65748e95dc3a36384f6c3d592c1dd578708e8da219d7d4"
+	t.Log("parse WIF key")
+	pri, err := GetP256KeyPairFromWIF([]byte(wif))
+	if err != nil {
+		t.Fatal(err)
+	}
+	v, ok := pri.(*ec.PrivateKey)
+	if !ok {
+		t.Fatal("error key type")
+	}
+	if v.Algorithm != ec.ECDSA {
+		t.Fatal("error algorithm")
+	}
+	if v.D.Text(16) != hf {
+		t.Fatal("error key value")
 	}
 }

@@ -31,10 +31,13 @@ import (
 	"crypto"
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/sha256"
 	"errors"
 	"fmt"
+	"math/big"
 	"reflect"
 
+	base58 "github.com/itchyny/base58-go"
 	"github.com/ontio/ontology-crypto/ec"
 
 	"golang.org/x/crypto/ed25519"
@@ -357,4 +360,33 @@ func ComparePublicKey(k0, k1 PublicKey) bool {
 	}
 
 	return false
+}
+
+// Parse ECDSA P-256 private key in WIF
+func GetP256KeyPairFromWIF(wif []byte) (PrivateKey, error) {
+	buf, err := base58.BitcoinEncoding.Decode(wif)
+	if err != nil {
+		return nil, err
+	}
+	bi, ok := new(big.Int).SetString(string(buf), 10)
+	clearBytes(buf)
+	if !ok || bi == nil {
+		return nil, errors.New("parse WIF error, invalid base58 data")
+	}
+	buf = bi.Bytes()
+	defer clearBytes(buf)
+	pos := len(buf) - 4
+	sum := sha256.Sum256(buf[:pos])
+	sum = sha256.Sum256(sum[:])
+	if !bytes.Equal(sum[:4], buf[pos:]) {
+		return nil, errors.New("invalid WIF data, checksum failed")
+	}
+	pri := ec.ConstructPrivateKey(buf[1:pos-1], elliptic.P256())
+	return &ec.PrivateKey{Algorithm: ec.ECDSA, PrivateKey: pri}, nil
+}
+
+func clearBytes(buf []byte) {
+	for i := 0; i < len(buf); i++ {
+		buf[i] = 0
+	}
 }
