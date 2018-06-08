@@ -347,9 +347,3 @@ func GetP256KeyPairFromWIF(wif []byte) (PrivateKey, error) {
 	pri := ec.ConstructPrivateKey(buf[1:pos-1], elliptic.P256())
 	return &ec.PrivateKey{Algorithm: ec.ECDSA, PrivateKey: pri}, nil
 }
-
-func clearBytes(buf []byte) {
-	for i := 0; i < len(buf); i++ {
-		buf[i] = 0
-	}
-}
