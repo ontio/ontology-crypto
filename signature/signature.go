@@ -217,7 +217,9 @@ func Deserialize(buf []byte) (*Signature, error) {
 	var sig Signature
 	sig.Scheme = SignatureScheme(buf[0])
 	switch sig.Scheme {
-	case SHA224withECDSA, SHA256withECDSA, SHA384withECDSA, SHA512withECDSA, RIPEMD160withECDSA:
+	case SHA224withECDSA, SHA256withECDSA, SHA384withECDSA, SHA512withECDSA,
+		SHA3_224withECDSA, SHA3_256withECDSA, SHA3_384withECDSA, SHA3_512withECDSA,
+		RIPEMD160withECDSA:
 		dsa, err := deserializeDSA(buf[1:])
 		if err != nil {
 			return nil, errors.New(e + err.Error())
