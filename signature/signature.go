@@ -209,7 +209,7 @@ func Serialize(sig *Signature) ([]byte, error) {
 
 	// Treat SHA256withECDSA as a special case, using the signature
 	// data directly without the signature scheme.
-	if sig.Scheme == SHA256withECDSA {
+	if sig.Scheme == SHA256withECDSA && len(res) == 65 {
 		res = res[1:]
 	}
 
