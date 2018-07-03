@@ -24,8 +24,8 @@ import (
 	"github.com/ontio/ontology-crypto/keypair"
 )
 
-func TestVrf(t *testing.T) {
-	pri, pub, err := keypair.GenerateKeyPair(keypair.PK_SM2, keypair.SM2P256V1)
+func testVrf(t *testing.T, kt keypair.KeyType, curve byte) {
+	pri, pub, err := keypair.GenerateKeyPair(kt, curve)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -44,9 +44,15 @@ func TestVrf(t *testing.T) {
 		t.Fatal("failed")
 	}
 }
+func TestVrf(t *testing.T) {
+	testVrf(t, keypair.PK_ECDSA, keypair.P224)
+	testVrf(t, keypair.PK_ECDSA, keypair.P256)
+	testVrf(t, keypair.PK_ECDSA, keypair.P384)
+	testVrf(t, keypair.PK_SM2, keypair.SM2P256V1)
+}
 
-func TestInvalidKey(t *testing.T) {
-	pri, pub, err := keypair.GenerateKeyPair(keypair.PK_ECDSA, keypair.P521)
+func testInvalidKey(t *testing.T, kt keypair.KeyType, curve byte) {
+	pri, pub, err := keypair.GenerateKeyPair(kt, curve)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -61,8 +67,12 @@ func TestInvalidKey(t *testing.T) {
 		t.Fatal("should return false")
 	}
 }
+func TestInvalidKey(t *testing.T) {
+	testInvalidKey(t, keypair.PK_ECDSA, keypair.P521)
+	testInvalidKey(t, keypair.PK_EDDSA, keypair.ED25519)
+}
 
-func TestValidKey(t *testing.T) {
+func testValidKey(t *testing.T, kt keypair.KeyType, curve byte) {
 	pri, pub, err := keypair.GenerateKeyPair(keypair.PK_ECDSA, keypair.P256)
 	if err != nil {
 		t.Fatal(err)
@@ -78,7 +88,12 @@ func TestValidKey(t *testing.T) {
 		t.Fatal("should return true")
 	}
 }
-
+func TestValidKey(t *testing.T) {
+	testValidKey(t, keypair.PK_ECDSA, keypair.P224)
+	testValidKey(t, keypair.PK_ECDSA, keypair.P256)
+	testValidKey(t, keypair.PK_ECDSA, keypair.P384)
+	testValidKey(t, keypair.PK_SM2, keypair.SM2P256V1)
+}
 func BenchmarkVrf(b *testing.B) {
 	pri, _, err := keypair.GenerateKeyPair(keypair.PK_ECDSA, keypair.P256)
 	if err != nil {
