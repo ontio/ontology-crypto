@@ -44,15 +44,15 @@ func Vrf(pri keypair.PrivateKey, msg []byte) (vrf, nizk []byte, err error) {
 	}
 	sk := pri.(*ec.PrivateKey)
 	h := getHash(sk.Curve)
+	byteLen := (sk.Params().BitSize + 7) >> 3
 	_, proof := Evaluate(sk.PrivateKey, h, msg)
-	if proof == nil || len(proof) != 64+65 {
+	if proof == nil {
 		return nil, nil, ErrEvalVRF
 	}
 
-	nizk = proof[0:64]
-	vrf = proof[64 : 64+65]
+	nizk = proof[0 : 2*byteLen]
+	vrf = proof[2*byteLen : 2*byteLen+2*byteLen+1]
 	err = nil
-
 	return
 }
 
