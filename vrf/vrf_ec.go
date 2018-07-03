@@ -43,6 +43,8 @@ import (
 	"errors"
 	"hash"
 	"math/big"
+
+	"github.com/ontio/ontology-crypto/ec"
 )
 
 var (
@@ -62,7 +64,12 @@ func hashToCurve(curve elliptic.Curve, h hash.Hash, m []byte) (x, y *big.Int) {
 		h.Write(m)
 		r := []byte{2} // Set point encoding to "compressed", y=0.
 		r = h.Sum(r)
-		x, y = Unmarshal(curve, r[:byteLen+1])
+		p, err := ec.DecodePublicKey(r[:byteLen+1], curve)
+		if err != nil {
+			x, y = nil, nil
+		} else {
+			x, y = p.X, p.Y
+		}
 		i++
 	}
 	return
