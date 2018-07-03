@@ -25,7 +25,7 @@ import (
 )
 
 func TestVrf(t *testing.T) {
-	pri, pub, err := keypair.GenerateKeyPair(keypair.PK_ECDSA, keypair.P256)
+	pri, pub, err := keypair.GenerateKeyPair(keypair.PK_SM2, keypair.SM2P256V1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -46,7 +46,7 @@ func TestVrf(t *testing.T) {
 }
 
 func TestInvalidKey(t *testing.T) {
-	pri, pub, err := keypair.GenerateKeyPair(keypair.PK_ECDSA, keypair.P224)
+	pri, pub, err := keypair.GenerateKeyPair(keypair.PK_ECDSA, keypair.P521)
 	if err != nil {
 		t.Fatal(err)
 	}

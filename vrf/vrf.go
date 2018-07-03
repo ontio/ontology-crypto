@@ -20,12 +20,15 @@
 package vrf
 
 import (
+	"crypto"
 	"crypto/elliptic"
 	"errors"
+	"hash"
 
-	"github.com/google/keytransparency/core/crypto/vrf/p256"
 	"github.com/ontio/ontology-crypto/ec"
 	"github.com/ontio/ontology-crypto/keypair"
+	"github.com/ontio/ontology-crypto/sm3"
+	"github.com/ontio/ontology/common/log"
 )
 
 var (
@@ -39,10 +42,9 @@ func Vrf(pri keypair.PrivateKey, msg []byte) (vrf, nizk []byte, err error) {
 	if !isValid {
 		return nil, nil, ErrKeyNotSupported
 	}
-	t := pri.(*ec.PrivateKey)
-	sk := new(p256.PrivateKey)
-	sk.PrivateKey = t.PrivateKey
-	_, proof := sk.Evaluate(msg)
+	sk := pri.(*ec.PrivateKey)
+	h := getHash(sk.Curve)
+	_, proof := Evaluate(sk.PrivateKey, h, msg)
 	if proof == nil || len(proof) != 64+65 {
 		return nil, nil, ErrEvalVRF
 	}
@@ -60,20 +62,18 @@ func Verify(pub keypair.PublicKey, msg, vrf, nizk []byte) (bool, error) {
 	if !isValid {
 		return false, ErrKeyNotSupported
 	}
-
-	t := pub.(*ec.PublicKey)
-	pk := new(p256.PublicKey)
-	pk.PublicKey = t.PublicKey
-
-	if len(vrf) != 65 || len(nizk) != 64 {
+	pk := pub.(*ec.PublicKey)
+	h := getHash(pk.Curve)
+	byteLen := (pk.Params().BitSize + 7) >> 3
+	if len(vrf) != byteLen*2+1 || len(nizk) != byteLen*2 {
 		return false, nil
 	}
 	proof := append(nizk, vrf...)
-	_, err := pk.ProofToHash(msg, proof)
+	_, err := ProofToHash(pk.PublicKey, h, msg, proof)
 	if err != nil {
-		return false, err
+		log.Debugf("verifying VRF failed: %v", err)
+		return false, nil
 	}
-
 	return true, nil
 }
 
@@ -85,8 +85,8 @@ func Verify(pub keypair.PublicKey, msg, vrf, nizk []byte) (bool, error) {
 func ValidatePrivateKey(pri keypair.PrivateKey) bool {
 	switch t := pri.(type) {
 	case *ec.PrivateKey:
-		if t.Params().Gx.Cmp(elliptic.P256().Params().Gx) != 0 ||
-			t.Params().Gy.Cmp(elliptic.P256().Params().Gy) != 0 {
+		h := getHash(t.Curve)
+		if h == nil {
 			return false
 		}
 		return true
@@ -103,12 +103,33 @@ func ValidatePrivateKey(pri keypair.PrivateKey) bool {
 func ValidatePublicKey(pub keypair.PublicKey) bool {
 	switch t := pub.(type) {
 	case *ec.PublicKey:
-		if t.Params().Gx.Cmp(elliptic.P256().Params().Gx) != 0 ||
-			t.Params().Gy.Cmp(elliptic.P256().Params().Gy) != 0 {
+		h := getHash(t.Curve)
+		if h == nil {
 			return false
 		}
 		return true
+
 	default:
 		return false
+	}
+}
+
+func getHash(curve elliptic.Curve) hash.Hash {
+	bitSize := curve.Params().BitSize
+	switch bitSize {
+	case 224:
+		return crypto.SHA224.New()
+	case 256:
+		if curve.Params().Name == "sm2p256v1" {
+			return sm3.New()
+		} else if curve.Params().Name == "P-256" {
+			return crypto.SHA256.New()
+		} else {
+			return nil
+		}
+	case 384:
+		return crypto.SHA384.New()
+	default:
+		return nil
 	}
 }
