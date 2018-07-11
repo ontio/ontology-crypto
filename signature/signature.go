@@ -22,9 +22,9 @@ import (
 	"bytes"
 	"crypto"
 	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rand"
 	"errors"
-	"io"
 	"math/big"
 
 	"golang.org/x/crypto/ed25519"
@@ -39,7 +39,8 @@ type Signature struct {
 }
 
 type DSASignature struct {
-	R, S *big.Int
+	R, S  *big.Int
+	Curve elliptic.Curve
 }
 
 type SM2Signature struct {
@@ -77,7 +78,7 @@ func Sign(scheme SignatureScheme, pri crypto.PrivateKey, msg []byte, opt interfa
 			}
 			res.Value = &SM2Signature{
 				ID:           id,
-				DSASignature: DSASignature{R: r, S: s},
+				DSASignature: DSASignature{R: r, S: s, Curve: key.Curve},
 			}
 		} else if scheme == SHA224withECDSA ||
 			scheme == SHA256withECDSA ||
@@ -96,7 +97,7 @@ func Sign(scheme SignatureScheme, pri crypto.PrivateKey, msg []byte, opt interfa
 				err = err0
 				return
 			}
-			res.Value = &DSASignature{R: r, S: s}
+			res.Value = &DSASignature{R: r, S: s, Curve: key.Curve}
 		} else {
 			err = errors.New("signing failed: unmatched signature scheme and private key")
 			return
@@ -189,8 +190,7 @@ func Serialize(sig *Signature) ([]byte, error) {
 			sig.Scheme != RIPEMD160withECDSA {
 			return nil, errors.New("failed serializing signature: unmatched signature scheme and value")
 		}
-
-		serializeDSA(v, &buf)
+		buf.Write(serializeDSA(v))
 
 	case *SM2Signature:
 		if sig.Scheme != SM3withSM2 {
@@ -198,7 +198,7 @@ func Serialize(sig *Signature) ([]byte, error) {
 		}
 		buf.Write([]byte(v.ID))
 		buf.WriteByte(byte(0))
-		serializeDSA(&v.DSASignature, &buf)
+		buf.Write(serializeDSA(&v.DSASignature))
 	case []byte:
 		buf.Write(v)
 	default:
@@ -264,23 +264,19 @@ func Deserialize(buf []byte) (*Signature, error) {
 	return &sig, nil
 }
 
-func serializeDSA(sig *DSASignature, w io.Writer) {
+func serializeDSA(sig *DSASignature) []byte {
 	if sig == nil || sig.R == nil || sig.S == nil {
 		panic("serializeDSA: invalid argument")
 	}
 
+	size := (sig.Curve.Params().BitSize + 7) >> 3
+	res := make([]byte, size*2)
+
 	r := sig.R.Bytes()
 	s := sig.S.Bytes()
-	lr := len(r)
-	ls := len(s)
-	if lr < ls {
-		w.Write(make([]byte, ls-lr))
-	}
-	w.Write(r)
-	if ls < lr {
-		w.Write(make([]byte, lr-ls))
-	}
-	w.Write(s)
+	copy(res[size-len(r):], r)
+	copy(res[size*2-len(s):], s)
+	return res
 }
 
 func deserializeDSA(buf []byte) (*DSASignature, error) {
