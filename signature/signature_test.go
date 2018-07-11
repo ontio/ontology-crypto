@@ -21,9 +21,11 @@ package signature
 import (
 	"bytes"
 	"encoding/hex"
+	"fmt"
 	"math/big"
 	"testing"
 
+	"github.com/ontio/ontology-crypto/ec"
 	"github.com/ontio/ontology-crypto/keypair"
 )
 
@@ -51,8 +53,9 @@ func testECDSA(t *testing.T, tc *ecdsaTestCase) {
 	sig := &Signature{
 		Scheme: tc.scheme,
 		Value: &DSASignature{
-			R: r,
-			S: s,
+			R:     r,
+			S:     s,
+			Curve: pri.(*ec.PrivateKey).Curve,
 		},
 	}
 
@@ -232,8 +235,9 @@ func TestSM2(t *testing.T) {
 		Value: &SM2Signature{
 			ID: id,
 			DSASignature: DSASignature{
-				R: r,
-				S: s,
+				R:     r,
+				S:     s,
+				Curve: pri.(*ec.PrivateKey).Curve,
 			},
 		},
 	}
@@ -278,6 +282,71 @@ func TestAllSchemeECDSA(t *testing.T) {
 			}
 
 			testDeserialize(t, buf, sig)
+		}
+	}
+}
+
+func TestSM2SV(t *testing.T) {
+	buf, _ := hex.DecodeString("1314ab80a7ad086249c01e65c4d9bb6ce18de259dcfc218cd49f2455c539e9112ca3031220580679fda524f575ac48b39b9f74cb0a97993df4fac5798b04c702d07a39")
+	pri, err := keypair.DeserializePrivateKey(buf)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	buf, _ = hex.DecodeString("0931323334353637383132333435363738000df57fa1e703c0166d74b965b202992d9b7653d60b9b539c99f8f356d9b0c0a129b56d16de076cdf30bc3d08b0bb691f362c29970af80e3cc8c62e4da56aa441")
+	sig, err := Deserialize(buf)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	msg, _ := hex.DecodeString("97b9ca0ce3a187b8605c409cd411125d5778c1b3a0538a4164d540746f9c530a")
+	h := ""
+	for _, b := range msg {
+		h += fmt.Sprintf("0x%02x, ", b)
+	}
+	t.Log(h)
+
+	sig1, err := Sign(SM3withSM2, pri, msg, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	buf1, err := Serialize(sig1)
+	t.Log(hex.EncodeToString(buf1))
+
+	if !Verify(pri.Public(), msg, sig) {
+		t.Fatal("verify error")
+	}
+}
+
+func TestP256(t *testing.T) {
+	pri, pub, _ := keypair.GenerateKeyPair(keypair.PK_ECDSA, keypair.P256)
+	t.Log("public:", hex.EncodeToString(keypair.SerializePublicKey(pub)))
+
+	msg := []byte{1, 2, 3}
+	t.Log("message:", hex.EncodeToString(msg))
+
+	for i := 0; i < 1000000; i++ {
+		sig, err := Sign(SHA256withECDSA, pri, msg, nil)
+		if err != nil {
+			t.Fatal(err)
+			continue
+		}
+		buf, err := Serialize(sig)
+		if err != nil {
+			t.Fatal(err)
+			continue
+		}
+		size := len(buf)
+		if size != 64 {
+			t.Error("signature:", hex.EncodeToString(buf))
+			t.Fatal("not 64:", size)
+		}
+		sig2, err := Deserialize(buf)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !Verify(pub, msg, sig2) {
+			t.Fatal("failed")
 		}
 	}
 }
