@@ -20,6 +20,8 @@ package signature
 
 import (
 	"bytes"
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"encoding/hex"
 	"fmt"
 	"math/big"
@@ -325,7 +327,7 @@ func TestP256(t *testing.T) {
 	msg := []byte{1, 2, 3}
 	t.Log("message:", hex.EncodeToString(msg))
 
-	for i := 0; i < 1000000; i++ {
+	for i := 0; i < 100000; i++ {
 		sig, err := Sign(SHA256withECDSA, pri, msg, nil)
 		if err != nil {
 			t.Fatal(err)
@@ -348,5 +350,179 @@ func TestP256(t *testing.T) {
 		if !Verify(pub, msg, sig2) {
 			t.Fatal("failed")
 		}
+	}
+}
+
+func BenchmarkP224Sign(b *testing.B) {
+	pri, _, _ := keypair.GenerateKeyPair(keypair.PK_ECDSA, keypair.P224)
+	for i := 0; i < b.N; i++ {
+		Sign(SHA224withECDSA, pri, msg, nil)
+	}
+}
+
+func BenchmarkP224Verify(b *testing.B) {
+	x, _ := new(big.Int).SetString("28783953bd173b45df8a0d24c791cd5d59c65d72acbf7efba5365f270", 16)
+	y, _ := new(big.Int).SetString("3519a401d7dfedb71dd8e0b9f3f511cce2ffd97bc33901fd42d006636", 16)
+	pub := &ec.PublicKey{
+		Algorithm: ec.ECDSA,
+		PublicKey: &ecdsa.PublicKey{
+			X:     x,
+			Y:     y,
+			Curve: elliptic.P224(),
+		},
+	}
+	r, _ := new(big.Int).SetString("9558f262ff324b035b97ce4628ed071c3e6d136b645a9c24c1f4d958", 16)
+	s, _ := new(big.Int).SetString("671e338aed93255034c757840cc1f23c6017b118a245f501bc9663cf", 16)
+	sig := &Signature{
+		Scheme: SHA224withECDSA,
+		Value: &DSASignature{
+			R:     r,
+			S:     s,
+			Curve: elliptic.P224(),
+		},
+	}
+
+	for i := 0; i < b.N; i++ {
+		Verify(pub, msg, sig)
+	}
+}
+
+func BenchmarkP256Sign(b *testing.B) {
+	pri, _, _ := keypair.GenerateKeyPair(keypair.PK_ECDSA, keypair.P256)
+	for i := 0; i < b.N; i++ {
+		Sign(SHA256withECDSA, pri, msg, nil)
+	}
+}
+
+func BenchmarkP256Verify(b *testing.B) {
+	x, _ := new(big.Int).SetString("d9f7e94812708f07b09bf31c03799a9ff3872341a4e1b01141f26713ba9b5ba4", 16)
+	y, _ := new(big.Int).SetString("853143ff870951b7faae0417d2f45b3f4d8b63dcea6f2f127a3cba4a7c260292", 16)
+	pub := &ec.PublicKey{
+		Algorithm: ec.ECDSA,
+		PublicKey: &ecdsa.PublicKey{
+			X:     x,
+			Y:     y,
+			Curve: elliptic.P256(),
+		},
+	}
+	r, _ := new(big.Int).SetString("a4e5e7c481ce9680efa579e2a27520a396816c5b68ef2123ee43d6545adfbd99", 16)
+	s, _ := new(big.Int).SetString("f06a4c5a200a0b7c1208f310d4dde8cadc2df310136f22d5b783ac35fbea07b7", 16)
+	sig := &Signature{
+		Scheme: SHA256withECDSA,
+		Value: &DSASignature{
+			R:     r,
+			S:     s,
+			Curve: elliptic.P256(),
+		},
+	}
+
+	for i := 0; i < b.N; i++ {
+		Verify(pub, msg, sig)
+	}
+}
+
+func BenchmarkP384Sign(b *testing.B) {
+	pri, _, _ := keypair.GenerateKeyPair(keypair.PK_ECDSA, keypair.P384)
+	for i := 0; i < b.N; i++ {
+		Sign(SHA384withECDSA, pri, msg, nil)
+	}
+}
+
+func BenchmarkP384Verify(b *testing.B) {
+	x, _ := new(big.Int).SetString("6bec622a3d59b424d7ecb69488ff0c2e69280ca132d1977ee87472f87df4914ebce8f38d28c588ad954fe8a6d51a5dfb0", 16)
+	y, _ := new(big.Int).SetString("2452ba0d1981dffeab4931f21fd834c44c6108c35ab2f6485cb244467f442491fecdf96797dd32455aa8e5a9d9bad7c70", 16)
+	pub := &ec.PublicKey{
+		Algorithm: ec.ECDSA,
+		PublicKey: &ecdsa.PublicKey{
+			X:     x,
+			Y:     y,
+			Curve: elliptic.P384(),
+		},
+	}
+	r, _ := new(big.Int).SetString("43731a8e0030a8d6a3ba9ff073805d196009f9bf90170dcf1b2f67766a489dffb6c2725d42d6780bc6f1990908cf04c0", 16)
+	s, _ := new(big.Int).SetString("223b260af3d80188c98fef15c359a16ac2bcde7d7e5441fd659bf9c6daa8185adbcddf46773a3804ae4eb095530d3132", 16)
+	sig := &Signature{
+		Scheme: SHA384withECDSA,
+		Value: &DSASignature{
+			R:     r,
+			S:     s,
+			Curve: elliptic.P384(),
+		},
+	}
+
+	for i := 0; i < b.N; i++ {
+		Verify(pub, msg, sig)
+	}
+}
+
+func BenchmarkP521Sign(b *testing.B) {
+	pri, _, _ := keypair.GenerateKeyPair(keypair.PK_ECDSA, keypair.P521)
+	for i := 0; i < b.N; i++ {
+		Sign(SHA512withECDSA, pri, msg, nil)
+	}
+}
+
+func BenchmarkP521Verify(b *testing.B) {
+	x, _ := new(big.Int).SetString("0159a7ecf17fc78849a8847b8fbbfe3ef6fc26d5c26f668be06af1443afacce81514bf3c766d67f705335c26cdf099632f67af27e42a72a0199aae3052ed43fa781a0", 16)
+	y, _ := new(big.Int).SetString("3011a6ae6b6c75b08429be63a690339c15598af51f4851034922a407adaf9a929afedfeb2172fd2914ae4bd461f64d94f1e87533153144cfa9822e613a7c06a389fb8", 16)
+	pub := &ec.PublicKey{
+		Algorithm: ec.ECDSA,
+		PublicKey: &ecdsa.PublicKey{
+			X:     x,
+			Y:     y,
+			Curve: elliptic.P521(),
+		},
+	}
+	r, _ := new(big.Int).SetString("018d125633746ead579fd5b6844d06032ad211b8c6193431c1fdab33e5c00da2c69905e0e42be057b8266f4795d5d806c10882d048d8f9f397723f90cb38718619ab", 16)
+	s, _ := new(big.Int).SetString("009a63c9648382fa72499cc2de8d68d630ffd17db17143549763d8dbbc19a07c6aae08ad04f233bc08acca56922cc8d1ecf30da15c9f5642c1ed4ef4447768e1c027", 16)
+	sig := &Signature{
+		Scheme: SHA512withECDSA,
+		Value: &DSASignature{
+			R:     r,
+			S:     s,
+			Curve: elliptic.P521(),
+		},
+	}
+
+	for i := 0; i < b.N; i++ {
+		Verify(pub, msg, sig)
+	}
+}
+
+func BenchmarkSM2Sign(b *testing.B) {
+	pri, _, _ := keypair.GenerateKeyPair(keypair.PK_SM2, keypair.SM2P256V1)
+	for i := 0; i < b.N; i++ {
+		Sign(SM3withSM2, pri, msg, nil)
+	}
+}
+
+func BenchmarkSM2Verify(b *testing.B) {
+	buf, _ := hex.DecodeString("1314b4f1a616a66817973d504e60ddb1e1fae7ae2144989854b116e6ef3fc33ac51803651797d81d422c54c0b2be2daa7990c4588a8d8ab502f50e6cde76b43e6cbb6d")
+	pri, _ := keypair.DeserializePrivateKey(buf)
+	pub := pri.Public()
+	buf, _ = hex.DecodeString("09757365726e616d65006479e21d293b3f1886258fd38dd65d1dd658dc9a4a723fe4074f21d1ce86bee1d113904fe1deac254f4d82734de2ad2ea4b4eb5dc8858ba6f59b7facfe95e6a1")
+	sig, _ := Deserialize(buf)
+
+	for i := 0; i < b.N; i++ {
+		Verify(pub, msg, sig)
+	}
+}
+
+func BenchmarkEd25519Sign(b *testing.B) {
+	pri, _, _ := keypair.GenerateKeyPair(keypair.PK_EDDSA, keypair.ED25519)
+	for i := 0; i < b.N; i++ {
+		Sign(SHA512withEDDSA, pri, msg, nil)
+	}
+}
+
+func BenchmarkEd25519Verify(b *testing.B) {
+	buf, _ := hex.DecodeString("141905c0b64315636742306dac8f303e0c2eb299d20952388f1c5eda0f4196302b7c724ae821ff34a976b6b36fdab1ea9445949951a2eb93277f7fe2144006d0bc42")
+	pri, _ := keypair.DeserializePrivateKey(buf)
+	pub := pri.Public()
+	buf, _ = hex.DecodeString("0ac963b05e49ce8f6d976f5b92b6122897ff37422fd48c460c2207af954fc8df2f8fb717d92fa6e6d42b988c4dc5ac3582d2fb7815131aacee9065d22218f8e30c")
+	sig, _ := Deserialize(buf)
+
+	for i := 0; i < b.N; i++ {
+		Verify(pub, msg, sig)
 	}
 }
