@@ -28,7 +28,7 @@ package vrf
 import (
 	"crypto/rand"
 	"crypto/sha256"
-	"fmt"
+	"errors"
 	"math/big"
 	"reflect"
 
@@ -43,12 +43,6 @@ type KeyPairBN256 struct {
 
 // GenKeyPair generates a new key pair of BN256 Pairing Curve
 func GenKeyPair() (kp *KeyPairBN256, err error) {
-
-	// pri, err := rand.Int(rand.Reader, bn256.Order)
-
-	// pub := new(bn256.G1)
-	// pub.ScalarBaseMult(pri)
-
 	kp = new(KeyPairBN256)
 
 	pri, pub, err := bn256.RandomG1(rand.Reader)
@@ -69,137 +63,101 @@ func (this *KeyPairBN256) GetPub() *bn256.G1 {
 	return this.pub
 }
 
+// SelfCheck checks the key pair
 func (this *KeyPairBN256) SelfCheck() error {
-
 	if this.pri == nil {
-		return *new(error)
+		return errors.New("private key is null")
 	}
 
 	if this.pub == nil {
-		return *new(error)
+		return errors.New("public key is null")
 	}
 
-	pub := new(bn256.G1)
-	pub.ScalarBaseMult(this.pri)
+	pub := new(bn256.G1).ScalarBaseMult(this.pri)
 
-	if this.pub.String() != pub.String() {
-		return *new(error)
+	// String() or Marshal() ??
+	if !reflect.DeepEqual(this.pub.Marshal(), pub.Marshal()) {
+		return errors.New("public key and private key are not matched")
 	}
 
 	return nil
 }
 
-/* funcs */
+/* Main functions */
 
-// VrfPbc returns the verifiable random function evaluated m and a NIZK proof
-// Proof()
-func VrfPbc(kp *KeyPairBN256, msg []byte) ([]byte, []byte) {
-
+// Pbc returns the verifiable random function evaluated m and a NIZK proof
+func Pbc(kp *KeyPairBN256, msg []byte) ([]byte, []byte, error) {
 	// check key pair
 	if kp.SelfCheck() != nil {
-		fmt.Printf("key pairis in wrong format. \n")
+		return nil, nil, errors.New("key pair is in wrong format")
 	}
-
 	// check message
 	if msg == nil {
-		fmt.Printf("message is empty. \n")
+		return nil, nil, errors.New("message is empty")
 	}
-
 	// compute
-
 	// g1
 	g1 := new(bn256.G1).ScalarBaseMult(big.NewInt(1))
-
 	// g2
 	g2 := new(bn256.G2).ScalarBaseMult(big.NewInt(1))
-
 	// hash message
+	// TODO: use HashToInt of crypto
 	digest := sha256.Sum256(msg)
 	x := big.NewInt(0).SetBytes(digest[:])
-	// _x := big.NewInt(0).SetBytes(digest[:])
 
 	// F(sk, x)
 	egg := bn256.Pair(g1, g2) // egg = e(g1, g2)
 
-	// fmt.Printf("#### x: %v \n", x)
-
 	tmp := x.Add(x, kp.pri)
-	tmp = tmp.ModInverse(tmp, bn256.Order) // 1/... mod n
+	tmp = tmp.ModInverse(tmp, bn256.Order) // 1/(x+sk) mod n
 	f := egg.ScalarMult(egg, tmp)
-
-	// fmt.Printf("#### tmp: %v \n", tmp)
-	// fmt.Printf("#### f: %v \n", f.Marshal())
-
-	// _egg := bn256.Pair(g1.ScalarMult(g1, tmp), g2) // egg = e(g1, g2)
-
-	// fmt.Printf("#### _x: %v \n", _x)
-	// fmt.Printf("#### _egg: %v \n", _egg.Marshal())
-	// fmt.Printf("#### _egg: %v \n", _egg.Marshal())
-
-	// pi(sk, x)
 
 	pi := new(bn256.G2)
 	pi = pi.ScalarBaseMult(tmp)
 
 	// marshal
-
-	m_f := f.Marshal()
-	m_pi := pi.Marshal()
+	mF := f.Marshal()
+	mPi := pi.Marshal()
 
 	// return
-	return m_f, m_pi
+	return mF, mPi, nil
 }
 
-func VrfPbcVerify(pk *bn256.G1, msg []byte, m_f []byte, m_pi []byte) (bool, error) {
-	f, ok := new(bn256.GT).Unmarshal(m_f)
-
+// PbcVerify verifies a proof with message m.
+func PbcVerify(pk *bn256.G1, msg []byte, mF []byte, mPi []byte) (bool, error) {
+	f, ok := new(bn256.GT).Unmarshal(mF)
 	if !ok {
-		fmt.Printf("### m_f ### \n")
-		return false, nil
+		return false, errors.New("failed to unmarshal mF")
 	}
 
-	pi, ok := new(bn256.G2).Unmarshal(m_pi)
-
+	pi, ok := new(bn256.G2).Unmarshal(mPi)
 	if !ok {
-		fmt.Printf("### m_pi ### \n")
-		return false, nil
+		return false, errors.New("failed to unmarshal mPi")
 	}
 
 	// hash message
 	digest := sha256.Sum256(msg)
 	x := big.NewInt(0).SetBytes(digest[:])
 
-	// g1
-	g1 := new(bn256.G1).ScalarBaseMult(big.NewInt(1))
-
-	// g2
-	g2 := new(bn256.G2).ScalarBaseMult(big.NewInt(1))
+	g1 := new(bn256.G1).ScalarBaseMult(big.NewInt(1)) // g1
+	g2 := new(bn256.G2).ScalarBaseMult(big.NewInt(1)) // g2
 
 	egg := bn256.Pair(g1, g2) // egg = e(g1, g2)
 
 	g1.ScalarBaseMult(x)
-	g1.Add(g1, pk)
+	g1.Add(g1, pk) // g^x · PK
 
-	first := bn256.Pair(g1, pi)
-	fmt.Printf("first: %v \n", first)
-	fmt.Printf("egg: %v \n", egg)
+	first := bn256.Pair(g1, pi) // e(g^x · PK, π)
+
 	if !reflect.DeepEqual(first.Marshal(), egg.Marshal()) {
-		fmt.Printf("### first ### \n")
-		return false, nil
+		return false, errors.New("failed checking VRF output")
 	}
 
 	g1.ScalarBaseMult(big.NewInt(1))
 	second := bn256.Pair(g1, pi)
 	if !reflect.DeepEqual(second.Marshal(), f.Marshal()) {
-		fmt.Printf("### second ### \n")
-		return false, nil
+		return false, errors.New("failed checking the proof of correctness")
 	}
 
 	return true, nil
-
 }
-
-// //Vrf returns the verifiable random function evaluated m and a NIZK proof
-// func Vrf(pri *big.Int, pub *bn256.G1, msg []byte) (vrf, nizk []byte, err error) {
-
-// }
