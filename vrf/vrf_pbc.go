@@ -19,10 +19,12 @@
 package vrf
 
 /*
- * TODO: implement the vrf scheme in the case that the underlying curve
- *  is a pairing-friendly curve. In this case, there is no need to
- *  include a NIZK proof for it suffices to verify the equation
- *      e(vrf, g) = e(Hg(m), pk)
+ * The pairing based vrf is an implentation of
+ * [A Verifiable Random Function With Short Proofs and Keys]
+ * (https://eprint.iacr.org/2004/310.pdf),
+ * authored by Yevgeniy Dodis and Aleksandr Yampolskiy.
+ * There are some changes made to use BN256 curve.
+ * The security of this implentation demands to analyze.
  */
 
 import (
@@ -41,8 +43,8 @@ type KeyPairBN256 struct {
 	pub *bn256.G1
 }
 
-// GenKeyPair generates a new key pair of BN256 Pairing Curve
-func GenKeyPair() (kp *KeyPairBN256, err error) {
+// GenerateKey generates a new key pair of BN256 Pairing Curve
+func GenerateKey() (kp *KeyPairBN256, err error) {
 	kp = new(KeyPairBN256)
 
 	pri, pub, err := bn256.RandomG1(rand.Reader)
@@ -85,8 +87,8 @@ func (this *KeyPairBN256) SelfCheck() error {
 
 /* Main functions */
 
-// Pbc returns the verifiable random function evaluated m and a NIZK proof
-func Pbc(kp *KeyPairBN256, msg []byte) ([]byte, []byte, error) {
+// PbcSign returns the verifiable random function evaluated m and a NIZK proof
+func PbcSign(kp *KeyPairBN256, msg []byte) ([]byte, []byte, error) {
 	// check key pair
 	if kp.SelfCheck() != nil {
 		return nil, nil, errors.New("key pair is in wrong format")
@@ -123,7 +125,7 @@ func Pbc(kp *KeyPairBN256, msg []byte) ([]byte, []byte, error) {
 	return mF, mPi, nil
 }
 
-// PbcVerify verifies a proof with message m.
+// PbcVerify verifies a proof and vrf with message m.
 func PbcVerify(pk *bn256.G1, msg []byte, mF []byte, mPi []byte) (bool, error) {
 	f, ok := new(bn256.GT).Unmarshal(mF)
 	if !ok {
@@ -145,17 +147,15 @@ func PbcVerify(pk *bn256.G1, msg []byte, mF []byte, mPi []byte) (bool, error) {
 	egg := bn256.Pair(g1, g2) // egg = e(g1, g2)
 
 	g1.ScalarBaseMult(x)
-	g1.Add(g1, pk) // g^x · PK
-
-	first := bn256.Pair(g1, pi) // e(g^x · PK, π)
-
-	if !reflect.DeepEqual(first.Marshal(), egg.Marshal()) {
+	g1.Add(g1, pk)                                          // g^x · PK
+	first := bn256.Pair(g1, pi)                             // first = e(g^x · PK, π)
+	if !reflect.DeepEqual(first.Marshal(), egg.Marshal()) { // check if first = e(g, g)
 		return false, errors.New("failed checking VRF output")
 	}
 
 	g1.ScalarBaseMult(big.NewInt(1))
-	second := bn256.Pair(g1, pi)
-	if !reflect.DeepEqual(second.Marshal(), f.Marshal()) {
+	second := bn256.Pair(g1, pi)                           // second = e(g, π)
+	if !reflect.DeepEqual(second.Marshal(), f.Marshal()) { // check if y = second
 		return false, errors.New("failed checking the proof of correctness")
 	}
 
