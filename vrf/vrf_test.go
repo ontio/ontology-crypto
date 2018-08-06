@@ -19,6 +19,7 @@
 package vrf
 
 import (
+	"math/big"
 	"testing"
 
 	"github.com/ontio/ontology-crypto/keypair"
@@ -44,11 +45,34 @@ func testVrf(t *testing.T, kt keypair.KeyType, curve byte) {
 		t.Fatal("failed")
 	}
 }
+
+func testVrfPbc(t *testing.T) {
+	kp, err := GenerateKey()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	msg := []byte("test")
+	vrf, proof, err := PbcSign(kp, msg)
+	if err != nil {
+		t.Fatalf("compute vrf-pbc: %v", err)
+	}
+
+	ok, err := PbcVerify(kp.GetPub(), msg, vrf, proof)
+	if err != nil {
+		t.Fatalf("verify vrf-pbc: %v", err)
+	}
+	if !ok {
+		t.Fatal("vrf-pbc failed")
+	}
+}
 func TestVrf(t *testing.T) {
 	testVrf(t, keypair.PK_ECDSA, keypair.P224)
 	testVrf(t, keypair.PK_ECDSA, keypair.P256)
 	testVrf(t, keypair.PK_ECDSA, keypair.P384)
 	testVrf(t, keypair.PK_SM2, keypair.SM2P256V1)
+
+	testVrfPbc(t)
 }
 
 func testInvalidKey(t *testing.T, kt keypair.KeyType, curve byte) {
@@ -67,9 +91,32 @@ func testInvalidKey(t *testing.T, kt keypair.KeyType, curve byte) {
 		t.Fatal("should return false")
 	}
 }
+
+func testInvalidKeyPbc(t *testing.T) {
+	kp, err := GenerateKey()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ok := kp.SelfCheck()
+	if ok != nil {
+		t.Fatal("should return nil")
+	}
+
+	wrongSK := kp.GetPri()
+	wrongSK = wrongSK.Add(wrongSK, big.NewInt(1))
+	kp.SetPri(wrongSK)
+
+	ok = kp.SelfCheck()
+	if ok == nil {
+		t.Fatal("should return Error")
+	}
+}
 func TestInvalidKey(t *testing.T) {
 	testInvalidKey(t, keypair.PK_ECDSA, keypair.P521)
 	testInvalidKey(t, keypair.PK_EDDSA, keypair.ED25519)
+
+	testInvalidKeyPbc(t)
 }
 
 func testValidKey(t *testing.T, kt keypair.KeyType, curve byte) {
@@ -104,5 +151,33 @@ func BenchmarkVrf(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		msg := []byte("test")
 		Vrf(pri, msg)
+	}
+}
+func BenchmarkVrfPbcSign(b *testing.B) {
+	kp, err := GenerateKey()
+	if err != nil {
+		b.Fatal(err)
+	}
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		msg := []byte("test")
+		PbcSign(kp, msg)
+	}
+}
+func BenchmarkVrfPbcVerify(b *testing.B) {
+	kp, err := GenerateKey()
+	pub := kp.GetPub()
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	msg := []byte("test")
+	vrf, proof, err := PbcSign(kp, msg)
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		PbcVerify(pub, msg, vrf, proof)
 	}
 }

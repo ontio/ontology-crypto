@@ -60,6 +60,11 @@ func (this *KeyPairBN256) GetPri() *big.Int {
 	return this.pri
 }
 
+// SetPri sets the private key
+func (this *KeyPairBN256) SetPri(newV *big.Int) *big.Int {
+	return this.pri.Set(newV)
+}
+
 // GetPub return public key
 func (this *KeyPairBN256) GetPub() *bn256.G1 {
 	return this.pub
