@@ -38,6 +38,8 @@ const (
 
 	// ED25519 curve label
 	ED25519 byte = 25
+
+	BN256 byte = 64
 )
 
 func GetCurveLabel(c elliptic.Curve) (byte, error) {

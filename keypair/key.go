@@ -38,6 +38,7 @@ import (
 	"reflect"
 
 	base58 "github.com/itchyny/base58-go"
+	"github.com/ontio/ontology-crypto/bn256"
 	"github.com/ontio/ontology-crypto/ec"
 
 	"golang.org/x/crypto/ed25519"
@@ -57,6 +58,7 @@ const (
 	PK_ECDSA KeyType = 0x12
 	PK_SM2   KeyType = 0x13
 	PK_EDDSA KeyType = 0x14
+	PK_BN256 KeyType = 0x15
 
 	PK_P256_E KeyType = 0x02
 	PK_P256_O KeyType = 0x03
@@ -99,6 +101,9 @@ func GenerateKeyPair(t KeyType, opts interface{}) (PrivateKey, PublicKey, error)
 		} else {
 			return nil, nil, errors.New(err_generate + "unsupported EdDSA scheme")
 		}
+	case PK_BN256:
+		pub, pri, err := bn256.GenerateKey(rand.Reader)
+		return pri, pub, err
 	default:
 		return nil, nil, errors.New(err_generate + "unknown algorithm")
 	}

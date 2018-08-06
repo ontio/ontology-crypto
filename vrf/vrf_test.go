@@ -19,7 +19,6 @@
 package vrf
 
 import (
-	"math/big"
 	"testing"
 
 	"github.com/ontio/ontology-crypto/keypair"
@@ -46,19 +45,19 @@ func testVrf(t *testing.T, kt keypair.KeyType, curve byte) {
 	}
 }
 
-func testVrfPbc(t *testing.T) {
-	kp, err := GenerateKey()
+func testVrfPbc(t *testing.T, kt keypair.KeyType, curve byte) {
+	pri, pub, err := keypair.GenerateKeyPair(kt, curve)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	msg := []byte("test")
-	vrf, proof, err := PbcSign(kp, msg)
+	vrf, proof, err := PbcSign(pri, msg)
 	if err != nil {
 		t.Fatalf("compute vrf-pbc: %v", err)
 	}
 
-	ok, err := PbcVerify(kp.GetPub(), msg, vrf, proof)
+	ok, err := PbcVerify(pub, msg, vrf, proof)
 	if err != nil {
 		t.Fatalf("verify vrf-pbc: %v", err)
 	}
@@ -72,7 +71,7 @@ func TestVrf(t *testing.T) {
 	testVrf(t, keypair.PK_ECDSA, keypair.P384)
 	testVrf(t, keypair.PK_SM2, keypair.SM2P256V1)
 
-	testVrfPbc(t)
+	testVrfPbc(t, keypair.PK_BN256, keypair.BN256)
 }
 
 func testInvalidKey(t *testing.T, kt keypair.KeyType, curve byte) {
@@ -91,32 +90,9 @@ func testInvalidKey(t *testing.T, kt keypair.KeyType, curve byte) {
 		t.Fatal("should return false")
 	}
 }
-
-func testInvalidKeyPbc(t *testing.T) {
-	kp, err := GenerateKey()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	ok := kp.SelfCheck()
-	if ok != nil {
-		t.Fatal("should return nil")
-	}
-
-	wrongSK := kp.GetPri()
-	wrongSK = wrongSK.Add(wrongSK, big.NewInt(1))
-	kp.SetPri(wrongSK)
-
-	ok = kp.SelfCheck()
-	if ok == nil {
-		t.Fatal("should return Error")
-	}
-}
 func TestInvalidKey(t *testing.T) {
 	testInvalidKey(t, keypair.PK_ECDSA, keypair.P521)
 	testInvalidKey(t, keypair.PK_EDDSA, keypair.ED25519)
-
-	testInvalidKeyPbc(t)
 }
 
 func testValidKey(t *testing.T, kt keypair.KeyType, curve byte) {
@@ -154,7 +130,7 @@ func BenchmarkVrf(b *testing.B) {
 	}
 }
 func BenchmarkVrfPbcSign(b *testing.B) {
-	kp, err := GenerateKey()
+	pri, _, err := keypair.GenerateKeyPair(keypair.PK_BN256, keypair.BN256)
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -162,18 +138,18 @@ func BenchmarkVrfPbcSign(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		msg := []byte("test")
-		PbcSign(kp, msg)
+		PbcSign(pri, msg)
 	}
 }
 func BenchmarkVrfPbcVerify(b *testing.B) {
-	kp, err := GenerateKey()
-	pub := kp.GetPub()
+	pri, pub, err := keypair.GenerateKeyPair(keypair.PK_BN256, keypair.BN256)
+
 	if err != nil {
 		b.Fatal(err)
 	}
 
 	msg := []byte("test")
-	vrf, proof, err := PbcSign(kp, msg)
+	vrf, proof, err := PbcSign(pri, msg)
 
 	b.ResetTimer()
 
