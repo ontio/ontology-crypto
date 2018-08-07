@@ -257,7 +257,9 @@ func Deserialize(buf []byte) (*Signature, error) {
 		}
 		sig.Value = &SM2Signature{ID: id, DSASignature: *dsa}
 	case SHA512withEDDSA:
-		sig.Value = data
+		val := make([]byte, len(data))
+		copy(val, data)
+		sig.Value = val
 	default:
 		return nil, errors.New(e + "unknown signature scheme")
 	}
