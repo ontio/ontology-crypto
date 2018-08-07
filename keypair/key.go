@@ -209,7 +209,9 @@ func DeserializePublicKey(data []byte) (PublicKey, error) {
 			if len(data[2:]) < ed25519.PublicKeySize {
 				return nil, errors.New("deserializing public key failed: not enough length for Ed25519 key")
 			}
-			return ed25519.PublicKey(data[2:]), nil
+			pk := make([]byte, len(data)-2)
+			copy(pk, data[2:])
+			return ed25519.PublicKey(pk), nil
 		} else {
 			return nil, errors.New("deserializing public key failed: unsupported EdDSA scheme")
 		}
