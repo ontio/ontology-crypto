@@ -58,8 +58,9 @@ const (
 	PK_SM2   KeyType = 0x13
 	PK_EDDSA KeyType = 0x14
 
-	PK_P256_E KeyType = 0x02
-	PK_P256_O KeyType = 0x03
+	PK_P256_E  KeyType = 0x02
+	PK_P256_O  KeyType = 0x03
+	PK_P256_NC KeyType = 0x04
 )
 
 const err_generate = "key pair generation failed, "
@@ -216,7 +217,7 @@ func DeserializePublicKey(data []byte) (PublicKey, error) {
 			return nil, errors.New("deserializing public key failed: unsupported EdDSA scheme")
 		}
 
-	case PK_P256_E, PK_P256_O:
+	case PK_P256_E, PK_P256_O, PK_P256_NC:
 		pub, err := ec.DecodePublicKey(data, elliptic.P256())
 		if err != nil {
 			return nil, errors.New("deserializing public key failed: decode P-256 public key error")
