@@ -207,8 +207,8 @@ func DeserializePublicKey(data []byte) (PublicKey, error) {
 
 	case PK_EDDSA:
 		if data[1] == ED25519 {
-			if len(data[2:]) < ed25519.PublicKeySize {
-				return nil, errors.New("deserializing public key failed: not enough length for Ed25519 key")
+			if len(data[2:]) != ed25519.PublicKeySize {
+				return nil, errors.New("deserializing public key failed: invalid length for Ed25519 public key")
 			}
 			pk := make([]byte, ed25519.PublicKeySize)
 			copy(pk, data[2:])
