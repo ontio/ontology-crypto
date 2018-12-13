@@ -210,7 +210,7 @@ func DeserializePublicKey(data []byte) (PublicKey, error) {
 			if len(data[2:]) < ed25519.PublicKeySize {
 				return nil, errors.New("deserializing public key failed: not enough length for Ed25519 key")
 			}
-			pk := make([]byte, len(data)-2)
+			pk := make([]byte, ed25519.PublicKeySize)
 			copy(pk, data[2:])
 			return ed25519.PublicKey(pk), nil
 		} else {
