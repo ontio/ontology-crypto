@@ -50,6 +50,10 @@ type combinedMult interface {
 	CombinedMult(bigX, bigY *big.Int, baseScalar, scalar []byte) (x, y *big.Int)
 }
 
+type invertible interface {
+	Inverse(*big.Int) *big.Int
+}
+
 func (z *zr) Read(dst []byte) (n int, err error) {
 	for i := range dst {
 		dst[i] = 0
@@ -178,7 +182,12 @@ func Sign(rand io.Reader, priv *ecdsa.PrivateKey, id string, msg []byte, hasher 
 		rD := new(big.Int).Mul(D, r)
 		s = new(big.Int).Sub(k, rD)
 		d1 := new(big.Int).Add(D, one)
-		d1Inv := new(big.Int).ModInverse(d1, N)
+		var d1Inv *big.Int
+		if opt, ok := priv.Curve.(invertible); ok {
+			d1Inv = opt.Inverse(d1)
+		} else {
+			d1Inv = new(big.Int).ModInverse(d1, N)
+		}
 		s.Mul(s, d1Inv)
 		s.Mod(s, N)
 		if s.Sign() != 0 {
