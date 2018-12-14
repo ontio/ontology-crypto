@@ -108,6 +108,14 @@ func p256_sm2OrdMul(res, in1, in2 []uint64)
 // Montgomery square modulo Ord(G), repeated n times
 func p256_sm2OrdSqr(res, in []uint64, n int)
 
+// A naive approach to implement p256_sm2OrdSqr
+func p256_sm2OrdSqr2(res, in []uint64, n int) {
+	copy(res, in)
+	for i := 0; i < n; i++ {
+		p256_sm2OrdMul(res, res, res)
+	}
+}
+
 // Point add with in2 being affine point
 // If sign == 1 -> in2 = -in2
 // If sel == 0 -> res = in1
@@ -150,16 +158,19 @@ func (curve p256Curve) Inverse(k *big.Int) *big.Int {
 	// Prepare the table, no need in constant time access, because the
 	// power is not a secret. (Entry 0 is never used.)
 	for i := 2; i < 16; i += 2 {
-		p256_sm2OrdSqr(table[4*(i-1):], table[4*((i/2)-1):], 1)
+		p256_sm2OrdSqr2(table[4*(i-1):], table[4*((i/2)-1):], 1)
 		p256_sm2OrdMul(table[4*i:], table[4*(i-1):], table[:4])
 	}
+
+	s := make([]uint64, 4, 4)
 
 	x[0] = table[4*14+0] // f
 	x[1] = table[4*14+1]
 	x[2] = table[4*14+2]
 	x[3] = table[4*14+3]
 
-	p256_sm2OrdSqr(x, x, 4)
+	p256_sm2OrdSqr2(x, x, 4)                 //f0
+	p256_sm2OrdMul(s, x, table[4*13:4*13+4]) // s = k^fe
 	p256_sm2OrdMul(x, x, table[4*14:4*14+4]) // ff
 	t := make([]uint64, 4, 4)
 	t[0] = x[0]
@@ -167,29 +178,40 @@ func (curve p256Curve) Inverse(k *big.Int) *big.Int {
 	t[2] = x[2]
 	t[3] = x[3]
 
-	p256_sm2OrdSqr(x, x, 8)
+	p256_sm2OrdSqr2(x, x, 8)
+	p256_sm2OrdMul(s, x, s) // s = k^fffe
 	p256_sm2OrdMul(x, x, t) // ffff
 	t[0] = x[0]
 	t[1] = x[1]
 	t[2] = x[2]
 	t[3] = x[3]
 
-	p256_sm2OrdSqr(x, x, 16)
+	p256_sm2OrdSqr2(x, x, 16)
+	p256_sm2OrdMul(s, x, s) // s= k^fffffffe
 	p256_sm2OrdMul(x, x, t) // ffffffff
 	t[0] = x[0]
 	t[1] = x[1]
 	t[2] = x[2]
 	t[3] = x[3]
 
-	p256_sm2OrdSqr(x, x, 64) // ffffffff0000000000000000
-	p256_sm2OrdMul(x, x, t)  // ffffffff00000000ffffffff
-	p256_sm2OrdSqr(x, x, 32) // ffffffff00000000ffffffff00000000
-	p256_sm2OrdMul(x, x, t)  // ffffffff00000000ffffffffffffffff
+	copy(x, s)
+	p256_sm2OrdSqr2(x, x, 32) // fffffffe00000000
+	p256_sm2OrdMul(x, x, t)   // fffffffeffffffff
+	p256_sm2OrdSqr2(x, x, 32) // fffffffeffffffff00000000
+	p256_sm2OrdMul(x, x, t)   // fffffffeffffffffffffffff
+	p256_sm2OrdSqr2(x, x, 32) // fffffffeffffffffffffffff00000000
+	p256_sm2OrdMul(x, x, t)   // fffffffeffffffffffffffffffffffff
 
 	// Remaining 32 windows
-	expLo := [32]byte{0xb, 0xc, 0xe, 0x6, 0xf, 0xa, 0xa, 0xd, 0xa, 0x7, 0x1, 0x7, 0x9, 0xe, 0x8, 0x4, 0xf, 0x3, 0xb, 0x9, 0xc, 0xa, 0xc, 0x2, 0xf, 0xc, 0x6, 0x3, 0x2, 0x5, 0x4, 0xf}
+	expLo := [32]byte{0x7, 0x2, 0x0, 0x3, 0xd, 0xf, 0x6, 0xb,
+		0x2, 0x1, 0xc, 0x6, 0x0, 0x5, 0x2, 0xb,
+		0x5, 0x3, 0xb, 0xb, 0xf, 0x4, 0x0, 0x9,
+		0x3, 0x9, 0xd, 0x5, 0x4, 0x1, 0x2, 0x1}
 	for i := 0; i < 32; i++ {
-		p256_sm2OrdSqr(x, x, 4)
+		p256_sm2OrdSqr2(x, x, 4)
+		if expLo[i] == 0 {
+			continue
+		}
 		p256_sm2OrdMul(x, x, table[4*(expLo[i]-1):])
 	}
 
