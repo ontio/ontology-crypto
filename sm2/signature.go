@@ -171,10 +171,7 @@ func Sign(rand io.Reader, priv *ecdsa.PrivateKey, id string, msg []byte, hasher 
 			r, _ = priv.ScalarBaseMult(k.Bytes())
 			r.Add(r, e)
 			r.Mod(r, N)
-			if r.Sign() != 0 {
-				break
-			}
-			if t := new(big.Int).Add(r, k); t.Cmp(N) == 0 {
+			if r.Sign() != 0 && new(big.Int).Add(r, k).Cmp(N) != 0 {
 				break
 			}
 		}
