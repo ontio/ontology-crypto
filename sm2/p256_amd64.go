@@ -188,14 +188,14 @@ func (curve p256Curve) Inverse(k *big.Int) *big.Int {
 
 	p256_sm2OrdSqr2(x, x, 16)
 	p256_sm2OrdMul(s, x, s) // s= k^fffffffe
-	p256_sm2OrdMul(x, x, t) // ffffffff
-	t[0] = x[0]
+	p256_sm2OrdMul(t, x, t) // ffffffff
+	/*t[0] = x[0]
 	t[1] = x[1]
 	t[2] = x[2]
-	t[3] = x[3]
+	t[3] = x[3]*/
 
-	copy(x, s)
-	p256_sm2OrdSqr2(x, x, 32) // fffffffe00000000
+	//copy(x, s)
+	p256_sm2OrdSqr2(x, s, 32) // fffffffe00000000
 	p256_sm2OrdMul(x, x, t)   // fffffffeffffffff
 	p256_sm2OrdSqr2(x, x, 32) // fffffffeffffffff00000000
 	p256_sm2OrdMul(x, x, t)   // fffffffeffffffffffffffff
