@@ -90,3 +90,32 @@ func BenchmarkVerify(b *testing.B) {
 		Verify(pub, "", msg, hasher, r, s)
 	}
 }
+
+func TestSM2Forgery(t *testing.T) {
+	var pubx = "bed1c52a2bb67d2cc82b0d099c5832b7886e21828c3745f84990c249cf8d5890"
+	var puby = "762a3a2e07c0e4ef2dee435d4f2b76d8892b42e77727eef72b9cbfa29c5eb76b"
+	x, _ := new(big.Int).SetString(pubx, 16)
+	y, _ := new(big.Int).SetString(puby, 16)
+	pub := &ecdsa.PublicKey{
+		Curve: SM2P256V1(),
+		X:     x,
+		Y:     y,
+	}
+	badmsg := []byte("forged message, arbitrary data goes here")
+	// compute e = H(z) = H(H(len||id||curveParams||pubkey)||msg)
+	hasher := sm3.New()
+	mz, err := getZ(badmsg, pub, "", hasher) // NOTE: using the internal convenience func provided by the package
+	if err != nil {
+		t.Fatal(err)
+	}
+	hasher.Reset()
+	hasher.Write(mz)
+	e := new(big.Int).SetBytes(hasher.Sum(nil))
+	emodn := new(big.Int).Mod(e, pub.Params().N)
+	// set r = e mod N, s = N - (e mod N)
+	r := new(big.Int).Set(emodn)
+	s := new(big.Int).Sub(pub.Params().N, emodn)
+	if Verify(pub, "", badmsg, sm3.New(), r, s) {
+		t.Fatal("Forgery passed!")
+	}
+}

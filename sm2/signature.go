@@ -201,17 +201,27 @@ func Verify(pub *ecdsa.PublicKey, id string, msg []byte, hasher hash.Hash, r, s 
 	if N.Sign() == 0 {
 		return false
 	}
+	if r.Sign() <= 0 || r.Cmp(N) >= 0 || s.Sign() <= 0 || s.Cmp(N) >= 0 {
+		return false
+	}
 
 	t := new(big.Int).Add(r, s)
 	t.Mod(t, N)
+	if t.Sign() <= 0 {
+		return false
+	}
 
-	var x *big.Int
+	var x, y *big.Int
 	if opt, ok := pub.Curve.(combinedMult); ok {
-		x, _ = opt.CombinedMult(pub.X, pub.Y, s.Bytes(), t.Bytes())
+		x, y = opt.CombinedMult(pub.X, pub.Y, s.Bytes(), t.Bytes())
 	} else {
 		x1, y1 := pub.ScalarBaseMult(s.Bytes())
 		x2, y2 := pub.ScalarMult(pub.X, pub.Y, t.Bytes())
-		x, _ = pub.Add(x1, y1, x2, y2)
+		x, y = pub.Add(x1, y1, x2, y2)
+	}
+
+	if x.Sign() == 0 && y.Sign() == 0 {
+		return false
 	}
 
 	mz, err := getZ(msg, pub, id, hasher)
