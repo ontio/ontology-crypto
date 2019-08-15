@@ -79,6 +79,14 @@ func randFieldElement(c elliptic.Curve, rand io.Reader) (*big.Int, error) {
 	return k, nil
 }
 
+// fermatInverse computes the inverse of k mod P where
+// P is a prime number using the Fermat's little theorem.
+func fermatInverse(k, P *big.Int) *big.Int {
+	two := big.NewInt(2)
+	pMinus2 := new(big.Int).Sub(P, two)
+	return new(big.Int).Exp(k, pMinus2, P)
+}
+
 // Combine the raw data with user ID, curve parameters and public key
 // to generate the signed data used in Sign and Verify
 func getZ(msg []byte, pub *ecdsa.PublicKey, userID string, hasher hash.Hash) ([]byte, error) {
@@ -183,7 +191,7 @@ func Sign(rand io.Reader, priv *ecdsa.PrivateKey, id string, msg []byte, hasher 
 		if opt, ok := priv.Curve.(invertible); ok {
 			d1Inv = opt.Inverse(d1)
 		} else {
-			d1Inv = new(big.Int).ModInverse(d1, N)
+			d1Inv = fermatInverse(d1, N)
 		}
 		s.Mul(s, d1Inv)
 		s.Mod(s, N)
