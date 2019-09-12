@@ -37,6 +37,7 @@ type ECAlgorithm byte
 
 const (
 	ECDSA ECAlgorithm = iota
+	ECIES
 	SM2
 )
 

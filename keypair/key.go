@@ -58,6 +58,8 @@ const (
 	PK_SM2   KeyType = 0x13
 	PK_EDDSA KeyType = 0x14
 
+	PK_ECIES KeyType = 0x22
+
 	PK_P256_E  KeyType = 0x02
 	PK_P256_O  KeyType = 0x03
 	PK_P256_NC KeyType = 0x04
@@ -72,7 +74,7 @@ const err_generate = "key pair generation failed, "
 //     EdDSA: a byte specifies the curve, only ED25519 supported currently.
 func GenerateKeyPair(t KeyType, opts interface{}) (PrivateKey, PublicKey, error) {
 	switch t {
-	case PK_ECDSA, PK_SM2:
+	case PK_ECDSA, PK_SM2, PK_ECIES:
 		param, ok := opts.(byte)
 		if !ok {
 			return nil, nil, errors.New(err_generate + "invalid EC options, 1 byte curve label excepted")
@@ -84,6 +86,8 @@ func GenerateKeyPair(t KeyType, opts interface{}) (PrivateKey, PublicKey, error)
 
 		if t == PK_ECDSA {
 			return ec.GenerateECKeyPair(c, rand.Reader, ec.ECDSA)
+		} else if t == PK_ECIES {
+			return ec.GenerateECKeyPair(c, rand.Reader, ec.ECIES)
 		} else {
 			return ec.GenerateECKeyPair(c, rand.Reader, ec.SM2)
 		}
@@ -111,6 +115,8 @@ func GetKeyType(p PublicKey) KeyType {
 		switch t.Algorithm {
 		case ec.ECDSA:
 			return PK_ECDSA
+		case ec.ECIES:
+			return PK_ECIES
 		case ec.SM2:
 			return PK_SM2
 		default:
@@ -160,6 +166,8 @@ func SerializePublicKey(key PublicKey) []byte {
 			buf.WriteByte(byte(PK_ECDSA))
 		case ec.SM2:
 			buf.WriteByte(byte(PK_SM2))
+		case ec.ECIES:
+			buf.WriteByte(byte(PK_ECIES))
 		}
 		label, err := GetCurveLabel(t.Curve)
 		if err != nil {
@@ -184,7 +192,7 @@ func DeserializePublicKey(data []byte) (PublicKey, error) {
 		return nil, errors.New("too short pubkey")
 	}
 	switch KeyType(data[0]) {
-	case PK_ECDSA, PK_SM2:
+	case PK_ECDSA, PK_SM2, PK_ECIES:
 		c, err := GetCurve(data[1])
 		if err != nil {
 			return nil, err
@@ -199,6 +207,8 @@ func DeserializePublicKey(data []byte) (PublicKey, error) {
 			pk.Algorithm = ec.ECDSA
 		case PK_SM2:
 			pk.Algorithm = ec.SM2
+		case PK_ECIES:
+			pk.Algorithm = ec.ECIES
 		default:
 			return nil, errors.New("deserializing public key failed: unknown EC algorithm")
 		}
@@ -266,6 +276,8 @@ func SerializePrivateKey(pri PrivateKey) []byte {
 			buf.WriteByte(byte(PK_ECDSA))
 		case ec.SM2:
 			buf.WriteByte(byte(PK_SM2))
+		case ec.ECIES:
+			buf.WriteByte(byte(PK_ECIES))
 		}
 		label, err := GetCurveLabel(t.Curve)
 		if err != nil {
@@ -292,7 +304,7 @@ func SerializePrivateKey(pri PrivateKey) []byte {
 // DeserializePrivateKey parses the input byte array into private key.
 func DeserializePrivateKey(data []byte) (pri PrivateKey, err error) {
 	switch KeyType(data[0]) {
-	case PK_ECDSA, PK_SM2:
+	case PK_ECDSA, PK_SM2, PK_ECIES:
 		c, err1 := GetCurve(data[1])
 		if err1 != nil {
 			err = err1
@@ -324,6 +336,8 @@ func DeserializePrivateKey(data []byte) (pri PrivateKey, err error) {
 			key.Algorithm = ec.ECDSA
 		case PK_SM2:
 			key.Algorithm = ec.SM2
+		case PK_ECIES:
+			key.Algorithm = ec.ECIES
 		}
 		pri = key
 

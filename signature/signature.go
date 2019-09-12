@@ -102,7 +102,6 @@ func Sign(scheme SignatureScheme, pri crypto.PrivateKey, msg []byte, opt interfa
 			err = errors.New("signing failed: unmatched signature scheme and private key")
 			return
 		}
-
 	case ed25519.PrivateKey:
 		if scheme != SHA512withEDDSA {
 			err = errors.New("signing failed: unmatched signature scheme and private key")
