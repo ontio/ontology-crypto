@@ -28,7 +28,6 @@ import (
 	"github.com/ontio/ontology-crypto/ec"
 	"github.com/ontio/ontology-crypto/keypair"
 	"github.com/ontio/ontology-crypto/sm3"
-	"github.com/ontio/ontology/common/log"
 )
 
 var (
@@ -71,7 +70,6 @@ func Verify(pub keypair.PublicKey, msg, vrf, nizk []byte) (bool, error) {
 	proof := append(nizk, vrf...)
 	_, err := ProofToHash(pk.PublicKey, h, msg, proof)
 	if err != nil {
-		log.Debugf("verifying VRF failed: %v", err)
 		return false, nil
 	}
 	return true, nil
