@@ -23,6 +23,7 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/btcsuite/btcd/btcec"
 	"github.com/ontio/ontology-crypto/sm2"
 )
 
@@ -32,6 +33,8 @@ const (
 	P256 byte = 2
 	P384 byte = 3
 	P521 byte = 4
+
+	SECP256K1 byte = 5
 
 	// SM2 curve label
 	SM2P256V1 byte = 20
@@ -56,6 +59,8 @@ func GetCurve(label byte) (elliptic.Curve, error) {
 		return elliptic.P521(), nil
 	case SM2P256V1:
 		return sm2.SM2P256V1(), nil
+	case SECP256K1:
+		return btcec.S256(), nil
 	default:
 		return nil, errors.New("unknown elliptic curve")
 	}
@@ -82,6 +87,8 @@ func GetNamedCurveLabel(name string) (byte, error) {
 		return P521, nil
 	case strings.ToUpper(sm2.SM2P256V1().Params().Name):
 		return SM2P256V1, nil
+	case strings.ToUpper(btcec.S256().Name):
+		return SECP256K1, nil
 	default:
 		return 0, errors.New("unsupported elliptic curve")
 	}
