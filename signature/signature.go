@@ -29,6 +29,7 @@ import (
 
 	"golang.org/x/crypto/ed25519"
 
+	"github.com/btcsuite/btcd/btcec"
 	"github.com/ontio/ontology-crypto/ec"
 	"github.com/ontio/ontology-crypto/sm2"
 )
@@ -90,14 +91,23 @@ func Sign(scheme SignatureScheme, pri crypto.PrivateKey, msg []byte, opt interfa
 			scheme == SHA3_512withECDSA ||
 			scheme == RIPEMD160withECDSA {
 
-			hasher.Write(msg)
-			digest := hasher.Sum(nil)
-			r, s, err0 := ecdsa.Sign(rand.Reader, key.PrivateKey, digest)
-			if err0 != nil {
-				err = err0
-				return
+			if key.Params().Name == btcec.S256().Name {
+				s, err0 := Secp256k1Sign(key, msg)
+				if err0 != nil {
+					err = err0
+					return
+				}
+				res.Value = s
+			} else {
+				hasher.Write(msg)
+				digest := hasher.Sum(nil)
+				r, s, err0 := ecdsa.Sign(rand.Reader, key.PrivateKey, digest)
+				if err0 != nil {
+					err = err0
+					return
+				}
+				res.Value = &DSASignature{R: r, S: s, Curve: key.Curve}
 			}
-			res.Value = &DSASignature{R: r, S: s, Curve: key.Curve}
 		} else {
 			err = errors.New("signing failed: unmatched signature scheme and private key")
 			return
@@ -141,6 +151,8 @@ func Verify(pub crypto.PublicKey, msg []byte, sig *Signature) bool {
 				h.Write(msg)
 				digest := h.Sum(nil)
 				res = ecdsa.Verify(key.PublicKey, digest, v.R, v.S)
+			} else if v, ok := sig.Value.([]byte); ok {
+				res = Secp256k1Verify(key, msg, v)
 			}
 		case SM3withSM2:
 			if v, ok := sig.Value.(*SM2Signature); ok {
@@ -237,11 +249,15 @@ func Deserialize(buf []byte) (*Signature, error) {
 	case SHA224withECDSA, SHA256withECDSA, SHA384withECDSA, SHA512withECDSA,
 		SHA3_224withECDSA, SHA3_256withECDSA, SHA3_384withECDSA, SHA3_512withECDSA,
 		RIPEMD160withECDSA:
-		dsa, err := deserializeDSA(data)
-		if err != nil {
-			return nil, errors.New(e + err.Error())
+		if len(data) == 65 { // secp256k1 signature
+			sig.Value = data
+		} else {
+			dsa, err := deserializeDSA(data)
+			if err != nil {
+				return nil, errors.New(e + err.Error())
+			}
+			sig.Value = dsa
 		}
-		sig.Value = dsa
 	case SM3withSM2:
 		i := 0
 		for i < len(data) && data[i] != 0 {
