@@ -25,6 +25,7 @@ import (
 	"errors"
 	"hash"
 
+	"github.com/btcsuite/btcd/btcec"
 	"github.com/ontio/ontology-crypto/ec"
 	"github.com/ontio/ontology-crypto/keypair"
 	"github.com/ontio/ontology-crypto/sm3"
@@ -118,11 +119,12 @@ func getHash(curve elliptic.Curve) hash.Hash {
 	case 224:
 		return crypto.SHA224.New()
 	case 256:
-		if curve.Params().Name == "sm2p256v1" {
+		switch curve.Params().Name {
+		case "sm2p256v1":
 			return sm3.New()
-		} else if curve.Params().Name == "P-256" {
+		case "P-256", btcec.S256().Name:
 			return crypto.SHA256.New()
-		} else {
+		default:
 			return nil
 		}
 	case 384:
