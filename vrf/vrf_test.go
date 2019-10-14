@@ -44,7 +44,9 @@ func testVrf(t *testing.T, kt keypair.KeyType, curve byte) {
 		t.Fatal("failed")
 	}
 }
+
 func TestVrf(t *testing.T) {
+	testVrf(t, keypair.PK_ECDSA, keypair.SECP256K1)
 	testVrf(t, keypair.PK_ECDSA, keypair.P224)
 	testVrf(t, keypair.PK_ECDSA, keypair.P256)
 	testVrf(t, keypair.PK_ECDSA, keypair.P384)
@@ -67,6 +69,7 @@ func testInvalidKey(t *testing.T, kt keypair.KeyType, curve byte) {
 		t.Fatal("should return false")
 	}
 }
+
 func TestInvalidKey(t *testing.T) {
 	testInvalidKey(t, keypair.PK_ECDSA, keypair.P521)
 	testInvalidKey(t, keypair.PK_EDDSA, keypair.ED25519)
@@ -88,12 +91,15 @@ func testValidKey(t *testing.T, kt keypair.KeyType, curve byte) {
 		t.Fatal("should return true")
 	}
 }
+
 func TestValidKey(t *testing.T) {
+	testValidKey(t, keypair.PK_ECDSA, keypair.SECP256K1)
 	testValidKey(t, keypair.PK_ECDSA, keypair.P224)
 	testValidKey(t, keypair.PK_ECDSA, keypair.P256)
 	testValidKey(t, keypair.PK_ECDSA, keypair.P384)
 	testValidKey(t, keypair.PK_SM2, keypair.SM2P256V1)
 }
+
 func BenchmarkVrf(b *testing.B) {
 	pri, _, err := keypair.GenerateKeyPair(keypair.PK_ECDSA, keypair.P256)
 	if err != nil {
