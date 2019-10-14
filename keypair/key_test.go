@@ -210,3 +210,28 @@ func TestWIF(t *testing.T) {
 		t.Fatal("error key value")
 	}
 }
+
+func TestSecp256k1Key(t *testing.T) {
+	_, pub, err := GenerateKeyPair(PK_ECDSA, SECP256K1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	k, ok := pub.(*ec.PublicKey)
+	if !ok {
+		t.Fatal("generated key error, should be ecdsa key")
+	}
+
+	b := SerializePublicKey(pub)
+	pub_, err := DeserializePublicKey(b)
+	if err != nil {
+		t.Fatal(err)
+	}
+	k_, ok := pub_.(*ec.PublicKey)
+	if !ok {
+		t.Fatal("deserialized public key error, should be ecdsa key")
+	}
+
+	if k.Y.Cmp(k_.Y) != 0 {
+		t.Fatal("deserialized public key not equal")
+	}
+}
