@@ -98,10 +98,9 @@ func hashToInt(curve elliptic.Curve, h hash.Hash, m []byte) *big.Int {
 // Evaluate returns the verifiable unpredictable(random) function evaluated at m
 func Evaluate(pri *ecdsa.PrivateKey, h hash.Hash, m []byte) (index [32]byte, proof []byte) {
 	curve := pri.Curve
-	params := curve.Params()
 	nilIndex := [32]byte{}
 
-	byteLen := (params.BitSize + 7) >> 3
+	byteLen := (curve.Params().BitSize + 7) >> 3
 	if byteLen != h.Size() {
 		return nilIndex, nil
 	}
@@ -119,15 +118,15 @@ func Evaluate(pri *ecdsa.PrivateKey, h hash.Hash, m []byte) (index [32]byte, pro
 	Hx, Hy := hashToCurve(curve, h, buf.Bytes())
 
 	// VRF_pri(m) = [pri]H
-	sHx, sHy := params.ScalarMult(Hx, Hy, pri.D.Bytes())
+	sHx, sHy := curve.ScalarMult(Hx, Hy, pri.D.Bytes())
 	vrf := elliptic.Marshal(curve, sHx, sHy) // 2*byteLen+1 bytes.
 
 	// G is the base point
 	// s = hashToInt(G, H, [pri]G, VRF, [r]G, [r]H)
-	rGx, rGy := params.ScalarBaseMult(r)
-	rHx, rHy := params.ScalarMult(Hx, Hy, r)
+	rGx, rGy := curve.ScalarBaseMult(r)
+	rHx, rHy := curve.ScalarMult(Hx, Hy, r)
 	var b bytes.Buffer
-	b.Write(elliptic.Marshal(curve, params.Gx, params.Gy))
+	b.Write(elliptic.Marshal(curve, curve.Params().Gx, curve.Params().Gy))
 	b.Write(elliptic.Marshal(curve, Hx, Hy))
 	b.Write(elliptic.Marshal(curve, pri.PublicKey.X, pri.PublicKey.Y))
 	b.Write(vrf)
@@ -137,7 +136,7 @@ func Evaluate(pri *ecdsa.PrivateKey, h hash.Hash, m []byte) (index [32]byte, pro
 
 	// t = r−s*pri mod N
 	t := new(big.Int).Sub(ri, new(big.Int).Mul(s, pri.D))
-	t.Mod(t, params.N)
+	t.Mod(t, curve.Params().N)
 
 	// Index = SHA256(vrf)
 	index = sha256.Sum256(vrf)
@@ -158,8 +157,7 @@ func Evaluate(pri *ecdsa.PrivateKey, h hash.Hash, m []byte) (index [32]byte, pro
 func ProofToHash(pk *ecdsa.PublicKey, h hash.Hash, m, proof []byte) (index [32]byte, err error) {
 	nilIndex := [32]byte{}
 	curve := pk.Curve
-	params := curve.Params()
-	byteLen := (params.BitSize + 7) >> 3
+	byteLen := (curve.Params().BitSize + 7) >> 3
 	if byteLen != h.Size() {
 		return nilIndex, ErrInvalidHash
 	}
@@ -180,9 +178,9 @@ func ProofToHash(pk *ecdsa.PublicKey, h hash.Hash, m, proof []byte) (index [32]b
 	}
 
 	// [t]G + [s]([pri]G) = [t+pri*s]G
-	tGx, tGy := params.ScalarBaseMult(t)
-	ksGx, ksGy := params.ScalarMult(pk.X, pk.Y, s)
-	tksGx, tksGy := params.Add(tGx, tGy, ksGx, ksGy)
+	tGx, tGy := curve.ScalarBaseMult(t)
+	ksGx, ksGy := curve.ScalarMult(pk.X, pk.Y, s)
+	tksGx, tksGy := curve.Add(tGx, tGy, ksGx, ksGy)
 
 	// H = hashToCurve(pk || m)
 	// [t]H + [s]VRF = [t+pri*s]H
@@ -190,15 +188,15 @@ func ProofToHash(pk *ecdsa.PublicKey, h hash.Hash, m, proof []byte) (index [32]b
 	buf.Write(elliptic.Marshal(curve, pk.X, pk.Y))
 	buf.Write(m)
 	Hx, Hy := hashToCurve(pk, h, buf.Bytes())
-	tHx, tHy := params.ScalarMult(Hx, Hy, t)
-	sHx, sHy := params.ScalarMult(uHx, uHy, s)
-	tksHx, tksHy := params.Add(tHx, tHy, sHx, sHy)
+	tHx, tHy := curve.ScalarMult(Hx, Hy, t)
+	sHx, sHy := curve.ScalarMult(uHx, uHy, s)
+	tksHx, tksHy := curve.Add(tHx, tHy, sHx, sHy)
 
 	//   hashToInt(G, H, [pri]G, VRF, [t]G + [s]([pri]G), [t]H + [s]VRF)
 	// = hashToInt(G, H, [pri]G, VRF, [t+pri*s]G, [t+pri*s]H)
 	// = hashToInt(G, H, [pri]G, VRF, [r]G, [r]H)
 	var b bytes.Buffer
-	b.Write(elliptic.Marshal(curve, params.Gx, params.Gy))
+	b.Write(elliptic.Marshal(curve, curve.Params().Gx, curve.Params().Gy))
 	b.Write(elliptic.Marshal(curve, Hx, Hy))
 	b.Write(elliptic.Marshal(curve, pk.X, pk.Y))
 	b.Write(vrf)
