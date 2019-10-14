@@ -23,6 +23,7 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"errors"
+	"github.com/btcsuite/btcd/btcec"
 	"math/big"
 )
 
@@ -213,13 +214,17 @@ func deCompress(yTilde int, xValue []byte, curve elliptic.Curve) (*ecdsa.PublicK
 	xCoord.SetBytes(xValue)
 
 	curveParams := curve.Params()
-	//y**2 = x**3 + A*x +B, A = -3, there is no A's clear definition in the realization of p256.
-	paramA := big.NewInt(-3)
-	//compute x**3 + A*x +B
 	ySqare := big.NewInt(0)
+	//x**2 + A
 	ySqare.Exp(xCoord, big.NewInt(2), curveParams.P)
-	ySqare.Add(ySqare, paramA)
-	ySqare.Mod(ySqare, curveParams.P)
+	if curveParams.Name != btcec.S256().Name {
+		//in secp256k1, A = 0
+		//in others A = -3, there is no A's clear definition in the realization of p256.
+		paramA := big.NewInt(-3)
+		ySqare.Add(ySqare, paramA)
+		ySqare.Mod(ySqare, curveParams.P)
+	}
+	//y**2 = x**3 + A*x +B
 	ySqare.Mul(ySqare, xCoord)
 	ySqare.Mod(ySqare, curveParams.P)
 	ySqare.Add(ySqare, curveParams.B)
