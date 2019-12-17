@@ -8,7 +8,6 @@ import (
 	"github.com/ontio/ontology-crypto/ec"
 	"github.com/ontio/ontology-crypto/keypair"
 	"github.com/ontio/ontology-crypto/sm2"
-	"github.com/ontio/ontology/core/types"
 )
 
 func Encrypt(pub keypair.PublicKey, m []byte) ([]byte, error) {
@@ -17,14 +16,13 @@ func Encrypt(pub keypair.PublicKey, m []byte) ([]byte, error) {
 		if key.Algorithm == ec.SM2 {
 			return sm2.Encrypt(key.PublicKey, m)
 		} else if key.Algorithm == ec.ECDSA {
-			addr := types.AddressFromPubKey(key)
 			pk := &ecies.PublicKey{
 				X:      key.X,
 				Y:      key.Y,
 				Curve:  key.Curve,
 				Params: ecies.ParamsFromCurve(key.Curve),
 			}
-			return ecies.Encrypt(rand.Reader, pk, m, addr[:], addr[:])
+			return ecies.Encrypt(rand.Reader, pk, m, nil, keypair.SerializePublicKey(key))
 		} else {
 			panic("unknown public key type")
 		}
@@ -34,7 +32,7 @@ func Encrypt(pub keypair.PublicKey, m []byte) ([]byte, error) {
 
 }
 
-func Decrypt(pri keypair.PublicKey, c []byte) ([]byte, error) {
+func Decrypt(pri keypair.PrivateKey, c []byte) ([]byte, error) {
 	switch key := pri.(type) {
 	case *ec.PrivateKey:
 		if key.Algorithm == ec.SM2 {
@@ -49,8 +47,7 @@ func Decrypt(pri keypair.PublicKey, c []byte) ([]byte, error) {
 				},
 				D: key.D,
 			}
-			addr := types.AddressFromPubKey(key.Public())
-			return sk.Decrypt(c, addr[:], addr[:])
+			return sk.Decrypt(c, nil, keypair.SerializePublicKey(key.Public()))
 		} else {
 			panic("unknown private key type")
 		}
