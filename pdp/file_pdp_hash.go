@@ -27,25 +27,29 @@ import (
 type BlockPdpHash []byte
 
 type FilePdpHashSt struct {
+	Version        uint64
 	BlockPdpHashes []BlockPdpHash
 }
 
 func (this *FilePdpHashSt) Serialize() []byte {
-	lenTmp := make([]byte, 8)
-
 	buf := new(bytes.Buffer)
+
+	uint64Tmp := make([]byte, 8)
+	binary.LittleEndian.PutUint64(uint64Tmp, this.Version)
+	buf.Write(uint64Tmp)
+
 	blockHashCount := uint64(len(this.BlockPdpHashes))
-	binary.LittleEndian.PutUint64(lenTmp, blockHashCount)
-	buf.Write(lenTmp)
+	binary.LittleEndian.PutUint64(uint64Tmp, blockHashCount)
+	buf.Write(uint64Tmp)
 
 	if 0 == blockHashCount {
-		return lenTmp
+		return buf.Bytes()
 	}
 
 	for i := uint64(0); i < blockHashCount; i++ {
 		blockHashLength := uint64(len(this.BlockPdpHashes[i]))
-		binary.LittleEndian.PutUint64(lenTmp, blockHashLength)
-		buf.Write(lenTmp)
+		binary.LittleEndian.PutUint64(uint64Tmp, blockHashLength)
+		buf.Write(uint64Tmp)
 		buf.Write(this.BlockPdpHashes[i])
 	}
 	return buf.Bytes()
@@ -54,11 +58,13 @@ func (this *FilePdpHashSt) Serialize() []byte {
 func (this *FilePdpHashSt) Deserialize(src []byte) error {
 	iv := uint64(0)
 	srcLength := uint64(len(src))
-
-	if srcLength -iv < 8 {
+	if srcLength -iv < 16 {
 		return fmt.Errorf("FilePdpHashSt Deserialize length error")
 	}
-	blockHashCount := binary.LittleEndian.Uint64(src[: iv + 8])
+	this.Version = binary.LittleEndian.Uint64(src[: iv + 8])
+	iv += 8
+
+	blockHashCount := binary.LittleEndian.Uint64(src[iv: iv + 8])
 	if 0 == blockHashCount {
 		return nil
 	}

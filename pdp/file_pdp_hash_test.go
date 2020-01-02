@@ -28,6 +28,7 @@ func TestFilePdpHashSt_Serialize(t *testing.T) {
 	var filePdpHashSt FilePdpHashSt
 
 	pdpHash := make([]byte, 32)
+	filePdpHashSt.Version = 53
 	for i := 0; i < 4; i ++ {
 		rand.Read(pdpHash)
 		filePdpHashSt.BlockPdpHashes = append(filePdpHashSt.BlockPdpHashes, pdpHash)
