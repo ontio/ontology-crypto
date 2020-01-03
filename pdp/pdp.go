@@ -25,6 +25,8 @@ import (
 	"github.com/ontio/ontology-crypto/pdp/pdpV2"
 )
 
+type Block []byte
+
 type Pdp struct {
 	Version uint64
 }
@@ -33,15 +35,8 @@ func NewPdp(version uint64) *Pdp {
 	return &Pdp{Version:version}
 }
 
-//FilePdpHash compute the file FilePdpHashSt
-func (p *Pdp) FilePdpHash(fileBlocksData [][]byte) *FilePdpHashSt {
-	var filePdpHashSt FilePdpHashSt
-	filePdpHashSt.Version = p.Version
-	for i := 0; i < len(fileBlocksData); i++ {
-		blockHash := pdpV2.BlkHash(fileBlocksData[i])
-		filePdpHashSt.BlockPdpHashes = append(filePdpHashSt.BlockPdpHashes, blockHash)
-	}
-	return &filePdpHashSt
+func (p *Pdp) FileBlockHash(fileBlockData Block) BlockPdpHash {
+	return pdpV2.BlkHash(fileBlockData)
 }
 
 //GenChallenge compute the index to choose block
@@ -57,7 +52,7 @@ func (p *Pdp) GenChallenge(nodeId [20]byte, blockHash []byte, fileBlockNum uint6
 }
 
 //BuildProof need parameters
-func (p *Pdp) GenProofWithPerBlock(fileBlockData []byte, nonce []byte, pdpParamBuf []byte) []byte {
+func (p *Pdp) GenProofWithPerBlock(fileBlockData Block, nonce []byte, pdpParamBuf []byte) []byte {
 	return pdpV2.BuildProof(fileBlockData, nonce[:], pdpParamBuf)
 }
 
