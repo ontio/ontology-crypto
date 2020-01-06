@@ -18,7 +18,8 @@
 
 package pdpV2
 
-//#cgo LDFLAGS: -L${SRCDIR}/./ -lsnarkpdp -ldl
+//#cgo darwin LDFLAGS: -L"./libsnark/mac/" -lsnarkpdp -ldl
+//#cgo linux LDFLAGS: -L"./libsnark/linux/" -lsnarkpdp -ldl
 //#include <stdint.h>
 //extern void create_new_parameters();
 //extern void create_block_hash(unsigned char*,unsigned char*);
