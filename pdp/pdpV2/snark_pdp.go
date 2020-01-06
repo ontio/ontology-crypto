@@ -18,8 +18,8 @@
 
 package pdpV2
 
-//#cgo darwin LDFLAGS: -L"./libsnark/mac/" -lsnarkpdp -ldl
-//#cgo linux LDFLAGS: -L"./libsnark/linux/" -lsnarkpdp -ldl
+//#cgo darwin LDFLAGS: -L"./libsnark/mac/" -lsnarkpdp -lm -lpthread -ldl
+//#cgo linux LDFLAGS: -L"./libsnark/linux/" -lsnarkpdp -lm -lpthread -ldl
 //#include <stdint.h>
 //extern void create_new_parameters( char*,unsigned int, char*,unsigned int);
 //extern void create_block_hash(unsigned char*,unsigned char*);
