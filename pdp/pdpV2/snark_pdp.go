@@ -21,7 +21,7 @@ package pdpV2
 //#cgo darwin LDFLAGS: -L"./libsnark/mac/" -lsnarkpdp -ldl
 //#cgo linux LDFLAGS: -L"./libsnark/linux/" -lsnarkpdp -ldl
 //#include <stdint.h>
-//extern void create_new_parameters();
+//extern void create_new_parameters( char*,unsigned int, char*,unsigned int);
 //extern void create_block_hash(unsigned char*,unsigned char*);
 //extern void print_hash(unsigned char*);
 //extern void build_proof(unsigned char*,unsigned int,unsigned char*,unsigned char*,unsigned char*);
@@ -42,8 +42,8 @@ func toC(buf []byte) *C.uchar {
 	return (*C.uchar)(unsafe.Pointer(&buf[0]))
 }
 
-func CreateParameters() {
-	C.create_new_parameters()
+func CreateParameters(paraPath, vkPath string) {
+	C.create_new_parameters(C.CString(paraPath), C.uint(len(paraPath)), C.CString(vkPath), C.uint(len(vkPath)))
 }
 
 //BlkHash compute the block hash

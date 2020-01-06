@@ -28,7 +28,7 @@ import (
 
 func TestCreateParameters(t *testing.T) {
 	fmt.Println("start create parameter test")
-	CreateParameters()
+	CreateParameters("./circuit", "./vk")
 }
 func TestBlkHash(t *testing.T) {
 	fmt.Println("start calc block hash test")
@@ -49,9 +49,9 @@ func TestProofBuild(t *testing.T) {
 	if err != nil {
 		t.Fatal("read nonce file error", err)
 	}
-	paramBuf, err := ioutil.ReadFile("parameters")
+	paramBuf, err := ioutil.ReadFile("circuit")
 	if err != nil {
-		t.Fatal("read parameters file error", err)
+		t.Fatal("read circuit file error", err)
 	}
 	proof := BuildProof(buf, nonceBuf, paramBuf)
 	t.Logf("output proof array: %x", proof)
@@ -68,14 +68,14 @@ func TestBuildProofAndVerification(t *testing.T) {
 	if err != nil {
 		t.Fatal("read nonce file error", err)
 	}
-	paramBuf, err := ioutil.ReadFile("parameters")
+	paramBuf, err := ioutil.ReadFile("circuit")
 	if err != nil {
-		t.Fatal("read parameters file error", err)
+		t.Fatal("read circuit file error", err)
 	}
 
 	proof := BuildProof(buf, nonceBuf, paramBuf)
 	fmt.Printf("output proof array: %x\n", proof)
-	vk, err := ioutil.ReadFile("verifying-key")
+	vk, err := ioutil.ReadFile("vk")
 	if err != nil {
 		t.Fatal("read vk file error", err)
 	}
@@ -99,9 +99,9 @@ func TestBuildProofAndVerifyModifyBlock(t *testing.T) {
 	if err != nil {
 		t.Fatal("read nonce file error", err)
 	}
-	paramBuf, err := ioutil.ReadFile("parameters")
+	paramBuf, err := ioutil.ReadFile("circuit")
 	if err != nil {
-		t.Fatal("read parameters file error", err)
+		t.Fatal("read circuit file error", err)
 	}
 	proof := BuildProof(buf, nonceBuf, paramBuf)
 	fmt.Printf("proof before modify: %x\n", proof)
@@ -114,7 +114,7 @@ func TestBuildProofAndVerifyModifyBlock(t *testing.T) {
 	proof = BuildProof(buf, nonceBuf, paramBuf)
 	fmt.Printf("proof after modify: %x\n", proof)
 
-	vk, err := ioutil.ReadFile("verifying-key")
+	vk, err := ioutil.ReadFile("vk")
 	if err != nil {
 		t.Fatal("read vk file error", err)
 	}
@@ -135,13 +135,13 @@ func BenchmarkBuildProofAndVerification(b *testing.B) {
 	if err != nil {
 		b.Fatal("read nonce file error", err)
 	}
-	vk, err := ioutil.ReadFile("verifying-key")
+	vk, err := ioutil.ReadFile("vk")
 	if err != nil {
 		b.Fatal("read vk file error", err)
 	}
-	paramBuf, err := ioutil.ReadFile("parameters")
+	paramBuf, err := ioutil.ReadFile("circuit")
 	if err != nil {
-		b.Fatal("read parameters file error", err)
+		b.Fatal("read circuit file error", err)
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {

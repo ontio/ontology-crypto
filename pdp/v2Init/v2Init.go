@@ -21,5 +21,5 @@ package main
 import "github.com/ontio/ontology-crypto/pdp/pdpV2"
 
 func main() {
-	pdpV2.CreateParameters()
+	pdpV2.CreateParameters("./circuit", "./vk")
 }
