@@ -24,7 +24,7 @@ import (
 
 	"github.com/ontio/ontology-crypto/pdp/pdpV2"
 )
-
+const blockLength = 16 * 1024
 type Block []byte
 
 type Pdp struct {
@@ -53,12 +53,16 @@ func (p *Pdp) GenChallenge(nodeId [20]byte, blockHash []byte, fileBlockNum uint6
 
 //FileBlockHash gen fileBlock's PdpHashData
 func (p *Pdp) FileBlockHash(fileBlockData Block) BlockPdpHash {
-	return pdpV2.BlkHash(fileBlockData)
+	tmpBlockData := make([]byte, blockLength)
+	copy(tmpBlockData, fileBlockData)
+	return pdpV2.BlkHash(tmpBlockData)
 }
 
 //BuildProof need parameters
 func (p *Pdp) GenProofWithPerBlock(fileBlockData Block, nonce []byte, pdpParamBuf []byte) []byte {
-	return pdpV2.BuildProof(fileBlockData, nonce, pdpParamBuf)
+	tmpBlockData := make([]byte, blockLength)
+	copy(tmpBlockData, fileBlockData)
+	return pdpV2.BuildProof(tmpBlockData, nonce, pdpParamBuf)
 }
 
 //VerifyProof used in consensus algorithm

@@ -74,7 +74,7 @@ func main() {
 			fmt.Printf("VerifyProofWithPerBlock failed, time: %d\n", time2)
 		} else {
 			fmt.Printf("VerifyProofWithPerBlock success, time: %d\n", time2)
-			fmt.Printf("Used time: %d", time2 - time1)
+			fmt.Printf("Used time: %d\n", time2 - time1)
 		}
 
 	}
