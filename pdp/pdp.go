@@ -35,8 +35,8 @@ func NewPdp(version uint64) *Pdp {
 	return &Pdp{Version:version}
 }
 
-func (p *Pdp) FileBlockHash(fileBlockData Block) BlockPdpHash {
-	return pdpV2.BlkHash(fileBlockData)
+func (p *Pdp) InitParameters(paraPath string, vk string) {
+	pdpV2.CreateParameters(paraPath, vk)
 }
 
 //GenChallenge compute the index to choose block
@@ -51,9 +51,14 @@ func (p *Pdp) GenChallenge(nodeId [20]byte, blockHash []byte, fileBlockNum uint6
 	return []uint64{challenge}
 }
 
+//FileBlockHash gen fileBlock's PdpHashData
+func (p *Pdp) FileBlockHash(fileBlockData Block) BlockPdpHash {
+	return pdpV2.BlkHash(fileBlockData)
+}
+
 //BuildProof need parameters
 func (p *Pdp) GenProofWithPerBlock(fileBlockData Block, nonce []byte, pdpParamBuf []byte) []byte {
-	return pdpV2.BuildProof(fileBlockData, nonce[:], pdpParamBuf)
+	return pdpV2.BuildProof(fileBlockData, nonce, pdpParamBuf)
 }
 
 //VerifyProof used in consensus algorithm
