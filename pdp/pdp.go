@@ -24,7 +24,7 @@ import (
 
 	"github.com/ontio/ontology-crypto/pdp/pdpV2"
 )
-const blockLength = 16 * 1024
+const blockLength = 4 * 1024
 type Block []byte
 
 type Pdp struct {
