@@ -6,6 +6,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ontio/ontology-crypto/ec"
 	"github.com/ontio/ontology-crypto/keypair"
+	"golang.org/x/crypto/sha3"
 )
 
 func TestSecp256k1(t *testing.T) {
@@ -15,7 +16,7 @@ func TestSecp256k1(t *testing.T) {
 	}
 
 	msg := []byte("test message")
-	sig, err := Sign(SHA3_512withECDSA, pri, msg, nil)
+	sig, err := Sign(SHA3_256withECDSA, pri, msg, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,9 +61,9 @@ func TestEthComp(t *testing.T) {
 		t.Fatal("convert error,", err)
 	}
 
-	h := hashKeccak256(msg)
+	h := sha3.Sum256(msg)
 
-	pubkey, err := crypto.SigToPub(h, eb)
+	pubkey, err := crypto.SigToPub(h[:], eb)
 	if err != nil {
 		t.Fatal("recover public key error,", err)
 	}
