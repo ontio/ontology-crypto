@@ -50,6 +50,8 @@ const (
 	SM3withSM2
 
 	SHA512withEDDSA
+
+	KECCAK256WithECDSA // ethereum method
 )
 
 var names []string = []string{
@@ -64,6 +66,7 @@ var names []string = []string{
 	"RIPEMD160withECDSA",
 	"SM3withSM2",
 	"SHA512withEdDSA",
+	"KECCAK256WithECDSA",
 }
 
 func (s SignatureScheme) Name() string {
@@ -75,7 +78,7 @@ func (s SignatureScheme) Name() string {
 
 func GetScheme(name string) (SignatureScheme, error) {
 	for i, v := range names {
-		if strings.ToUpper(v) == strings.ToUpper(name) {
+		if strings.EqualFold(v, name) {
 			return SignatureScheme(i), nil
 		}
 	}

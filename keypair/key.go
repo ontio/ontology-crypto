@@ -29,6 +29,7 @@ package keypair
 import (
 	"bytes"
 	"crypto"
+	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/sha256"
@@ -37,6 +38,7 @@ import (
 	"math/big"
 	"reflect"
 
+	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	base58 "github.com/itchyny/base58-go"
 	"github.com/ontio/ontology-crypto/ec"
 
@@ -54,9 +56,10 @@ type KeyType byte
 
 // Supported key types
 const (
-	PK_ECDSA KeyType = 0x12
-	PK_SM2   KeyType = 0x13
-	PK_EDDSA KeyType = 0x14
+	PK_ECDSA    KeyType = 0x12
+	PK_SM2      KeyType = 0x13
+	PK_EDDSA    KeyType = 0x14
+	PK_ETHECDSA KeyType = 0x15
 
 	PK_P256_E  KeyType = 0x02
 	PK_P256_O  KeyType = 0x03
@@ -100,6 +103,13 @@ func GenerateKeyPair(t KeyType, opts interface{}) (PrivateKey, PublicKey, error)
 		} else {
 			return nil, nil, errors.New(err_generate + "unsupported EdDSA scheme")
 		}
+	case PK_ETHECDSA:
+		privateKeyECDSA, err := ecdsa.GenerateKey(ethcrypto.S256(), rand.Reader)
+		if err != nil {
+			return nil, nil, err
+		}
+		return privateKeyECDSA, privateKeyECDSA.PublicKey, nil
+
 	default:
 		return nil, nil, errors.New(err_generate + "unknown algorithm")
 	}
@@ -118,6 +128,8 @@ func GetKeyType(p PublicKey) KeyType {
 		}
 	case ed25519.PublicKey:
 		return PK_EDDSA
+	case ecdsa.PublicKey:
+		return PK_ETHECDSA
 	default:
 		panic("unknown public key type")
 	}
@@ -171,6 +183,9 @@ func SerializePublicKey(key PublicKey) []byte {
 		buf.WriteByte(byte(PK_EDDSA))
 		buf.WriteByte(ED25519)
 		buf.Write([]byte(t))
+	case ecdsa.PublicKey:
+		buf.WriteByte(byte(PK_ETHECDSA))
+		buf.Write(ethcrypto.FromECDSAPub(&t))
 	default:
 		panic("unknown public key type")
 	}
@@ -228,6 +243,8 @@ func DeserializePublicKey(data []byte) (PublicKey, error) {
 			PublicKey: pub,
 		}
 		return pk, nil
+	case PK_ETHECDSA:
+		return ethcrypto.UnmarshalPubkey(data[1:])
 
 	default:
 		return nil, errors.New("deserializing public key failed: unrecognized algorithm label")
@@ -283,6 +300,10 @@ func SerializePrivateKey(pri PrivateKey) []byte {
 		buf.WriteByte(byte(PK_EDDSA))
 		buf.WriteByte(byte(ED25519))
 		buf.Write(t)
+	case *ecdsa.PrivateKey:
+		buf.WriteByte(byte(PK_ETHECDSA))
+		buf.Write(ethcrypto.FromECDSA(t))
+
 	default:
 		panic("unkown private key type")
 	}
@@ -338,7 +359,10 @@ func DeserializePrivateKey(data []byte) (pri PrivateKey, err error) {
 			err = errors.New("deserializing private key failed: unknown EdDSA curve type")
 			return
 		}
+	case PK_ETHECDSA:
+		return ethcrypto.ToECDSA(data[1:])
 	}
+
 	return
 }
 
@@ -360,6 +384,10 @@ func ComparePublicKey(k0, k1 PublicKey) bool {
 		if bytes.Compare(v0, v1) == 0 {
 			return true
 		}
+	case ecdsa.PublicKey:
+		right := k1.(ecdsa.PublicKey)
+
+		return v0.Equal(&right)
 	}
 
 	return false

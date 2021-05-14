@@ -28,6 +28,7 @@ import (
 
 	"github.com/ontio/ontology-crypto/ec"
 	"github.com/ontio/ontology-crypto/sm2"
+	"github.com/stretchr/testify/require"
 )
 
 func TestKeyPairGeneration(t *testing.T) {
@@ -234,4 +235,23 @@ func TestSecp256k1Key(t *testing.T) {
 	if k.Y.Cmp(k_.Y) != 0 {
 		t.Fatal("deserialized public key not equal")
 	}
+}
+
+func TestGenerateEth(t *testing.T) {
+	a := require.New(t)
+	pri, pub, err := GenerateKeyPair(PK_ETHECDSA, nil)
+	a.Nil(err, "fail")
+
+	tp := GetKeyType(pub)
+	a.Equal(tp, PK_ETHECDSA, "fail")
+
+	b := SerializePublicKey(pub)
+	_, err = DeserializePublicKey(b)
+	a.Nil(err, "fail")
+
+	b = SerializePrivateKey(pri)
+	_, err = DeserializePrivateKey(b)
+	a.Nil(err, "fail")
+
+	a.True(ComparePublicKey(pub, pub))
 }
