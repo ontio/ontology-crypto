@@ -27,11 +27,11 @@ import (
 	"errors"
 	"math/big"
 
-	"golang.org/x/crypto/ed25519"
-
 	"github.com/btcsuite/btcd/btcec"
+	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/ontio/ontology-crypto/ec"
 	"github.com/ontio/ontology-crypto/sm2"
+	"golang.org/x/crypto/ed25519"
 )
 
 type Signature struct {
@@ -56,6 +56,8 @@ type SM2Signature struct {
 // the last argument @opt:
 // - SM2 signature needs the user ID (string). If it is an empty string, the
 //   default ID ("1234567812345678") would be used.
+// - keccak256ecdsa applyHash : true  -> hash(msg) -> sign digest
+//                              false -> msg is already a 32 bytes long hashed value
 func Sign(scheme SignatureScheme, pri crypto.PrivateKey, msg []byte, opt interface{}) (sig *Signature, err error) {
 	var res Signature
 	res.Scheme = scheme
@@ -119,6 +121,42 @@ func Sign(scheme SignatureScheme, pri crypto.PrivateKey, msg []byte, opt interfa
 			return
 		}
 		res.Value = ed25519.Sign(key, msg)
+	case *ec.EthereumPrivateKey:
+		if scheme != KECCAK256WithECDSA {
+			err = errors.New("signing failed: unmatched signature scheme and private key")
+			return
+		}
+
+		// we assume 32 byte len meg is hashed mesaage
+		var signedMsg []byte
+		var err error
+		applyHash, ok := opt.(bool)
+		if !ok {
+			// default to sign directly
+			applyHash = false
+		}
+		if applyHash {
+			hasher := GetHash(scheme)
+			if hasher == nil {
+				err = errors.New("signing failed: unknown scheme")
+				return nil, err
+			}
+
+			hasher.Write(msg)
+			digest := hasher.Sum(nil)
+			signedMsg, err = ethcrypto.Sign(digest, key.PrivateKey)
+		} else {
+			signedMsg, err = ethcrypto.Sign(msg, key.PrivateKey)
+		}
+
+		if err != nil {
+			return nil, err
+		}
+		ret := &Signature{
+			Scheme: KECCAK256WithECDSA,
+			Value:  signedMsg,
+		}
+		return ret, nil
 
 	default:
 		err = errors.New("signing failed: unknown type of private key")
@@ -164,6 +202,28 @@ func Verify(pub crypto.PublicKey, msg []byte, sig *Signature) bool {
 			v := sig.Value.([]byte)
 			res = ed25519.Verify(key, msg, v)
 		}
+	case *ec.EthereumPublicKey:
+		if sig.Scheme != KECCAK256WithECDSA {
+			return false
+		}
+		kb := ethcrypto.FromECDSAPub(key.PublicKey)
+		sig := sig.Value.([]byte)
+		sig = sig[:ethcrypto.RecoveryIDOffset] // remove recovery id
+
+		if len(msg) != ethcrypto.DigestLength {
+			hasher := GetHash(KECCAK256WithECDSA)
+
+			if hasher == nil {
+				return false
+			}
+			hasher.Write(msg)
+
+			digest := hasher.Sum(nil)
+			return ethcrypto.VerifySignature(kb, digest, sig)
+		}
+
+		// compatible with ethereum
+		return ethcrypto.VerifySignature(kb, msg, sig)
 	}
 
 	return res
@@ -237,6 +297,7 @@ func Deserialize(buf []byte) (*Signature, error) {
 
 	var sig Signature
 	var data []byte
+	// NOTE: ethereum sign message is 65
 	if len(buf) == 64 {
 		data = buf
 		sig.Scheme = SHA256withECDSA
@@ -273,6 +334,10 @@ func Deserialize(buf []byte) (*Signature, error) {
 		}
 		sig.Value = &SM2Signature{ID: id, DSASignature: *dsa}
 	case SHA512withEDDSA:
+		val := make([]byte, len(data))
+		copy(val, data)
+		sig.Value = val
+	case KECCAK256WithECDSA:
 		val := make([]byte, len(data))
 		copy(val, data)
 		sig.Value = val

@@ -30,7 +30,9 @@ import (
 	// the following blank imports ensures these packages are linked
 	_ "crypto/sha256"
 	_ "crypto/sha512"
+
 	_ "golang.org/x/crypto/ripemd160"
+	"golang.org/x/crypto/sha3"
 	_ "golang.org/x/crypto/sha3"
 )
 
@@ -50,6 +52,8 @@ const (
 	SM3withSM2
 
 	SHA512withEDDSA
+
+	KECCAK256WithECDSA // ethereum method
 )
 
 var names []string = []string{
@@ -64,6 +68,7 @@ var names []string = []string{
 	"RIPEMD160withECDSA",
 	"SM3withSM2",
 	"SHA512withEdDSA",
+	"KECCAK256WithECDSA",
 }
 
 func (s SignatureScheme) Name() string {
@@ -75,7 +80,7 @@ func (s SignatureScheme) Name() string {
 
 func GetScheme(name string) (SignatureScheme, error) {
 	for i, v := range names {
-		if strings.ToUpper(v) == strings.ToUpper(name) {
+		if strings.EqualFold(v, name) {
 			return SignatureScheme(i), nil
 		}
 	}
@@ -107,6 +112,8 @@ func GetHash(scheme SignatureScheme) hash.Hash {
 		return sm3.New()
 	case SHA512withEDDSA:
 		return crypto.SHA512.New()
+	case KECCAK256WithECDSA:
+		return sha3.NewLegacyKeccak256()
 	}
 	return nil
 }

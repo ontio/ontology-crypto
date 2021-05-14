@@ -26,8 +26,10 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ontio/ontology-crypto/ec"
 	"github.com/ontio/ontology-crypto/sm2"
+	"github.com/stretchr/testify/require"
 )
 
 func TestKeyPairGeneration(t *testing.T) {
@@ -234,4 +236,41 @@ func TestSecp256k1Key(t *testing.T) {
 	if k.Y.Cmp(k_.Y) != 0 {
 		t.Fatal("deserialized public key not equal")
 	}
+}
+
+func TestGenerateEth(t *testing.T) {
+	a := require.New(t)
+	pri, pub, err := GenerateKeyPair(PK_ETHECDSA, nil)
+	a.Nil(err, "fail")
+
+	tp := GetKeyType(pub)
+	a.Equal(tp, PK_ETHECDSA, "fail")
+
+	b := SerializePublicKey(pub)
+	seriPub, err := DeserializePublicKey(b)
+	a.Nil(err, "fail")
+	a.True(ComparePublicKey(pub, seriPub), "fail")
+
+	epub, ok := pub.(*ec.EthereumPublicKey)
+	a.True(ok, "fail cast")
+	eb := crypto.FromECDSAPub(epub.PublicKey)
+	a.Equal(b[1:], eb, "fail")
+	a.Equal(b[0], byte(PK_ETHECDSA), "fail")
+
+	epri, ok := pri.(*ec.EthereumPrivateKey)
+	a.True(ok, "fail to cast")
+
+	eprib := crypto.FromECDSA(epri.PrivateKey)
+	b = SerializePrivateKey(pri)
+	a.Equal(b[1:], eprib, "fail")
+	a.Equal(b[0], byte(PK_ETHECDSA), "fail")
+
+	_, err = DeserializePrivateKey(b)
+	a.Nil(err, "fail")
+
+	a.True(ComparePublicKey(pub, pub))
+
+	_, pub2, err := GenerateKeyPair(PK_ETHECDSA, nil)
+	a.Nil(err, "fail")
+	a.False(ComparePublicKey(pub, pub2))
 }

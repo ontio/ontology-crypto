@@ -27,8 +27,10 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ontio/ontology-crypto/ec"
 	"github.com/ontio/ontology-crypto/keypair"
+	"github.com/stretchr/testify/require"
 )
 
 type ecdsaTestCase struct {
@@ -525,4 +527,69 @@ func BenchmarkEd25519Verify(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		Verify(pub, msg, sig)
 	}
+}
+
+func TestSignEthRawMsg(t *testing.T) {
+	a := require.New(t)
+	pri, pub, err := keypair.GenerateKeyPair(keypair.PK_ETHECDSA, nil)
+	a.Nil(err, "fail")
+	sig, err := Sign(KECCAK256WithECDSA, pri, msg, true)
+	a.Nil(err, "fail")
+	a.Equal(sig.Scheme, KECCAK256WithECDSA, "fail")
+
+	// check the sign same with ethereum sign
+	epri, ok := pri.(*ec.EthereumPrivateKey)
+	a.True(ok, "fail")
+	h := GetHash(KECCAK256WithECDSA)
+	h.Write(msg)
+	esign, err := crypto.Sign(h.Sum(nil), epri.PrivateKey)
+	a.Nil(err, "fail")
+	a.Equal(esign, sig.Value.([]byte), "fail")
+	// ethereum sign data len
+	a.Equal(len(sig.Value.([]byte)), 65, "fail")
+
+	ret := Verify(pub, msg, sig)
+	a.True(ret, "fail")
+
+	b, err := Serialize(sig)
+	a.Nil(err, "fail")
+	a.Equal(len(b), int(66), "fail")
+
+	recb, err := Deserialize(b)
+	a.Nil(err, "fail")
+	a.Equal(recb, sig, "fail")
+}
+
+func TestSignEthHashed(t *testing.T) {
+	a := require.New(t)
+	hasher := GetHash(KECCAK256WithECDSA)
+	hasher.Write(msg)
+	digest := hasher.Sum(nil)
+
+	pri, pub, err := keypair.GenerateKeyPair(keypair.PK_ETHECDSA, nil)
+	a.Nil(err, "fail")
+	sig, err := Sign(KECCAK256WithECDSA, pri, digest, false)
+	a.Nil(err, "fail")
+	a.Equal(sig.Scheme, KECCAK256WithECDSA, "fail")
+
+	sig, err = Sign(KECCAK256WithECDSA, pri, digest, nil)
+	a.Nil(err, "fail")
+	a.Equal(sig.Scheme, KECCAK256WithECDSA, "fail")
+
+	ret := Verify(pub, digest, sig)
+	a.True(ret, "fail")
+
+	b, err := Serialize(sig)
+	a.Nil(err, "fail")
+	a.Equal(len(b), int(66), "fail")
+
+	recb, err := Deserialize(b)
+	a.Nil(err, "fail")
+	a.Equal(recb, sig, "fail")
+
+	// should have same signed message
+	ep := pri.(*ec.EthereumPrivateKey)
+	sig2, err := crypto.Sign(digest, ep.PrivateKey)
+	a.Nil(err, "fail")
+	a.Equal(sig2, sig.Value.([]byte), "ethereum should have same sign with ontology")
 }
