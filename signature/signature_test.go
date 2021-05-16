@@ -528,7 +528,7 @@ func BenchmarkEd25519Verify(b *testing.B) {
 	}
 }
 
-func TestSignEth(t *testing.T) {
+func TestSignEthRawMsg(t *testing.T) {
 	a := require.New(t)
 	pri, pub, err := keypair.GenerateKeyPair(keypair.PK_ETHECDSA, nil)
 	a.Nil(err, "fail")
@@ -537,6 +537,30 @@ func TestSignEth(t *testing.T) {
 	a.Equal(sig.Scheme, KECCAK256WithECDSA, "fail")
 
 	ret := Verify(pub, msg, sig)
+	a.True(ret, "fail")
+
+	b, err := Serialize(sig)
+	a.Nil(err, "fail")
+	a.Equal(len(b), int(66), "fail")
+
+	recb, err := Deserialize(b)
+	a.Nil(err, "fail")
+	a.Equal(recb, sig, "fail")
+}
+
+func TestSignEthHashed(t *testing.T) {
+	a := require.New(t)
+	hasher := GetHash(KECCAK256WithECDSA)
+	hasher.Write(msg)
+	digest := hasher.Sum(nil)
+
+	pri, pub, err := keypair.GenerateKeyPair(keypair.PK_ETHECDSA, nil)
+	a.Nil(err, "fail")
+	sig, err := Sign(KECCAK256WithECDSA, pri, digest, nil)
+	a.Nil(err, "fail")
+	a.Equal(sig.Scheme, KECCAK256WithECDSA, "fail")
+
+	ret := Verify(pub, digest, sig)
 	a.True(ret, "fail")
 
 	b, err := Serialize(sig)
