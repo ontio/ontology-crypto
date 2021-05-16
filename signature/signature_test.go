@@ -29,6 +29,7 @@ import (
 
 	"github.com/ontio/ontology-crypto/ec"
 	"github.com/ontio/ontology-crypto/keypair"
+	"github.com/stretchr/testify/require"
 )
 
 type ecdsaTestCase struct {
@@ -525,4 +526,24 @@ func BenchmarkEd25519Verify(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		Verify(pub, msg, sig)
 	}
+}
+
+func TestSignEth(t *testing.T) {
+	a := require.New(t)
+	pri, pub, err := keypair.GenerateKeyPair(keypair.PK_ETHECDSA, nil)
+	a.Nil(err, "fail")
+	sig, err := Sign(KECCAK256WithECDSA, pri, msg, nil)
+	a.Nil(err, "fail")
+	a.Equal(sig.Scheme, KECCAK256WithECDSA, "fail")
+
+	ret := Verify(pub, msg, sig)
+	a.True(ret, "fail")
+
+	b, err := Serialize(sig)
+	a.Nil(err, "fail")
+	a.Equal(len(b), int(66), "fail")
+
+	recb, err := Deserialize(b)
+	a.Nil(err, "fail")
+	a.Equal(recb, sig, "fail")
 }

@@ -30,7 +30,9 @@ import (
 	// the following blank imports ensures these packages are linked
 	_ "crypto/sha256"
 	_ "crypto/sha512"
+
 	_ "golang.org/x/crypto/ripemd160"
+	"golang.org/x/crypto/sha3"
 	_ "golang.org/x/crypto/sha3"
 )
 
@@ -110,6 +112,8 @@ func GetHash(scheme SignatureScheme) hash.Hash {
 		return sm3.New()
 	case SHA512withEDDSA:
 		return crypto.SHA512.New()
+	case KECCAK256WithECDSA:
+		return sha3.NewLegacyKeccak256()
 	}
 	return nil
 }

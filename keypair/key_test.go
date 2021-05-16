@@ -254,4 +254,8 @@ func TestGenerateEth(t *testing.T) {
 	a.Nil(err, "fail")
 
 	a.True(ComparePublicKey(pub, pub))
+
+	_, pub2, err := GenerateKeyPair(PK_ETHECDSA, nil)
+	a.Nil(err, "fail")
+	a.False(ComparePublicKey(pub, pub2))
 }

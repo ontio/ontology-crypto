@@ -27,11 +27,13 @@ import (
 	"errors"
 	"math/big"
 
-	"golang.org/x/crypto/ed25519"
-
 	"github.com/btcsuite/btcd/btcec"
+	"github.com/ethereum/go-ethereum/common/math"
+	ethcrypto "github.com/ethereum/go-ethereum/crypto"
+	ethsecp256k1 "github.com/ethereum/go-ethereum/crypto/secp256k1"
 	"github.com/ontio/ontology-crypto/ec"
 	"github.com/ontio/ontology-crypto/sm2"
+	"golang.org/x/crypto/ed25519"
 )
 
 type Signature struct {
@@ -119,6 +121,30 @@ func Sign(scheme SignatureScheme, pri crypto.PrivateKey, msg []byte, opt interfa
 			return
 		}
 		res.Value = ed25519.Sign(key, msg)
+	case *ecdsa.PrivateKey:
+		if scheme != KECCAK256WithECDSA {
+			err = errors.New("signing failed: unmatched signature scheme and private key")
+			return
+		}
+		seckey := math.PaddedBigBytes(key.D, key.Params().BitSize/8)
+		defer zeroBytes(seckey)
+		hasher := GetHash(scheme)
+		if hasher == nil {
+			err = errors.New("signing failed: unknown scheme")
+			return
+		}
+		hasher.Write(msg)
+		digest := hasher.Sum(nil)
+
+		signedMsg, err := ethsecp256k1.Sign(digest, seckey)
+		if err != nil {
+			return nil, err
+		}
+		ret := &Signature{
+			Scheme: KECCAK256WithECDSA,
+			Value:  signedMsg,
+		}
+		return ret, nil
 
 	default:
 		err = errors.New("signing failed: unknown type of private key")
@@ -164,6 +190,19 @@ func Verify(pub crypto.PublicKey, msg []byte, sig *Signature) bool {
 			v := sig.Value.([]byte)
 			res = ed25519.Verify(key, msg, v)
 		}
+	case ecdsa.PublicKey:
+		if sig.Scheme != KECCAK256WithECDSA {
+			return false
+		}
+		kb := ethcrypto.FromECDSAPub(&key)
+		sig := sig.Value.([]byte)
+		sig = sig[:ethcrypto.RecoveryIDOffset] // remove recovery id
+
+		hasher := GetHash(KECCAK256WithECDSA)
+		hasher.Write(msg)
+		digest := hasher.Sum(nil)
+
+		return ethsecp256k1.VerifySignature(kb, digest, sig)
 	}
 
 	return res
@@ -276,6 +315,10 @@ func Deserialize(buf []byte) (*Signature, error) {
 		val := make([]byte, len(data))
 		copy(val, data)
 		sig.Value = val
+	case KECCAK256WithECDSA:
+		val := make([]byte, len(data))
+		copy(val, data)
+		sig.Value = val
 	default:
 		return nil, errors.New(e + "unknown signature scheme")
 	}
@@ -311,4 +354,10 @@ func deserializeDSA(buf []byte) (*DSASignature, error) {
 		R: new(big.Int).SetBytes(buf[0 : length/2]),
 		S: new(big.Int).SetBytes(buf[length/2:]),
 	}, nil
+}
+
+func zeroBytes(bytes []byte) {
+	for i := range bytes {
+		bytes[i] = 0
+	}
 }
