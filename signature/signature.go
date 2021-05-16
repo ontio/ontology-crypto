@@ -28,9 +28,7 @@ import (
 	"math/big"
 
 	"github.com/btcsuite/btcd/btcec"
-	"github.com/ethereum/go-ethereum/common/math"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
-	ethsecp256k1 "github.com/ethereum/go-ethereum/crypto/secp256k1"
 	"github.com/ontio/ontology-crypto/ec"
 	"github.com/ontio/ontology-crypto/sm2"
 	"golang.org/x/crypto/ed25519"
@@ -126,17 +124,24 @@ func Sign(scheme SignatureScheme, pri crypto.PrivateKey, msg []byte, opt interfa
 			err = errors.New("signing failed: unmatched signature scheme and private key")
 			return
 		}
-		seckey := math.PaddedBigBytes(key.D, key.Params().BitSize/8)
-		defer zeroBytes(seckey)
-		hasher := GetHash(scheme)
-		if hasher == nil {
-			err = errors.New("signing failed: unknown scheme")
-			return
-		}
-		hasher.Write(msg)
-		digest := hasher.Sum(nil)
 
-		signedMsg, err := ethsecp256k1.Sign(digest, seckey)
+		// we assume 32 byte len meg is hashed mesaage
+		var signedMsg []byte
+		var err error
+		if len(msg) != ethcrypto.DigestLength {
+			hasher := GetHash(scheme)
+			if hasher == nil {
+				err = errors.New("signing failed: unknown scheme")
+				return nil, err
+			}
+
+			hasher.Write(msg)
+			digest := hasher.Sum(nil)
+			signedMsg, err = ethcrypto.Sign(digest, key)
+		} else {
+			signedMsg, err = ethcrypto.Sign(msg, key)
+		}
+
 		if err != nil {
 			return nil, err
 		}
@@ -198,11 +203,20 @@ func Verify(pub crypto.PublicKey, msg []byte, sig *Signature) bool {
 		sig := sig.Value.([]byte)
 		sig = sig[:ethcrypto.RecoveryIDOffset] // remove recovery id
 
-		hasher := GetHash(KECCAK256WithECDSA)
-		hasher.Write(msg)
-		digest := hasher.Sum(nil)
+		if len(msg) != ethcrypto.DigestLength {
+			hasher := GetHash(KECCAK256WithECDSA)
 
-		return ethsecp256k1.VerifySignature(kb, digest, sig)
+			if hasher == nil {
+				return false
+			}
+			hasher.Write(msg)
+
+			digest := hasher.Sum(nil)
+			return ethcrypto.VerifySignature(kb, digest, sig)
+		}
+
+		// compatible with ethereum
+		return ethcrypto.VerifySignature(kb, msg, sig)
 	}
 
 	return res
@@ -354,10 +368,4 @@ func deserializeDSA(buf []byte) (*DSASignature, error) {
 		R: new(big.Int).SetBytes(buf[0 : length/2]),
 		S: new(big.Int).SetBytes(buf[length/2:]),
 	}, nil
-}
-
-func zeroBytes(bytes []byte) {
-	for i := range bytes {
-		bytes[i] = 0
-	}
 }
