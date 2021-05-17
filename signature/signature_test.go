@@ -27,6 +27,7 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ontio/ontology-crypto/ec"
 	"github.com/ontio/ontology-crypto/keypair"
 	"github.com/stretchr/testify/require"
@@ -570,4 +571,10 @@ func TestSignEthHashed(t *testing.T) {
 	recb, err := Deserialize(b)
 	a.Nil(err, "fail")
 	a.Equal(recb, sig, "fail")
+
+	// should have same signed message
+	ep := pri.(*ecdsa.PrivateKey)
+	sig2, err := crypto.Sign(digest, ep)
+	a.Nil(err, "fail")
+	a.Equal(sig2, sig.Value.([]byte), "ethereum should have same sign with")
 }
