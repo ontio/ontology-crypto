@@ -561,6 +561,10 @@ func TestSignEthHashed(t *testing.T) {
 	a.Nil(err, "fail")
 	a.Equal(sig.Scheme, KECCAK256WithECDSA, "fail")
 
+	sig, err = Sign(KECCAK256WithECDSA, pri, digest, nil)
+	a.Nil(err, "fail")
+	a.Equal(sig.Scheme, KECCAK256WithECDSA, "fail")
+
 	ret := Verify(pub, digest, sig)
 	a.True(ret, "fail")
 

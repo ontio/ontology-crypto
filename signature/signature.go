@@ -132,7 +132,8 @@ func Sign(scheme SignatureScheme, pri crypto.PrivateKey, msg []byte, opt interfa
 		var err error
 		applyHash, ok := opt.(bool)
 		if !ok {
-			return nil, errors.New("this scheme need opt as a bool value, means do you want this function to hash the input and then sign the hash for you or just sign this raw message?")
+			// default to sign directly
+			applyHash = false
 		}
 		if applyHash {
 			hasher := GetHash(scheme)
