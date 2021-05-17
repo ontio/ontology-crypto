@@ -56,6 +56,8 @@ type SM2Signature struct {
 // the last argument @opt:
 // - SM2 signature needs the user ID (string). If it is an empty string, the
 //   default ID ("1234567812345678") would be used.
+// - keccak256ecdsa applyHash : true  -> hash(msg) -> sign digest
+//                              false -> msg is already a 32 bytes long hashed value
 func Sign(scheme SignatureScheme, pri crypto.PrivateKey, msg []byte, opt interface{}) (sig *Signature, err error) {
 	var res Signature
 	res.Scheme = scheme
@@ -128,7 +130,11 @@ func Sign(scheme SignatureScheme, pri crypto.PrivateKey, msg []byte, opt interfa
 		// we assume 32 byte len meg is hashed mesaage
 		var signedMsg []byte
 		var err error
-		if len(msg) != ethcrypto.DigestLength {
+		applyHash, ok := opt.(bool)
+		if !ok {
+			return nil, errors.New("this scheme need opt as a bool value, means do you want this function to hash the input and then sign the hash for you or just sign this raw message?")
+		}
+		if applyHash {
 			hasher := GetHash(scheme)
 			if hasher == nil {
 				err = errors.New("signing failed: unknown scheme")

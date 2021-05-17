@@ -533,7 +533,7 @@ func TestSignEthRawMsg(t *testing.T) {
 	a := require.New(t)
 	pri, pub, err := keypair.GenerateKeyPair(keypair.PK_ETHECDSA, nil)
 	a.Nil(err, "fail")
-	sig, err := Sign(KECCAK256WithECDSA, pri, msg, nil)
+	sig, err := Sign(KECCAK256WithECDSA, pri, msg, true)
 	a.Nil(err, "fail")
 	a.Equal(sig.Scheme, KECCAK256WithECDSA, "fail")
 
@@ -557,7 +557,7 @@ func TestSignEthHashed(t *testing.T) {
 
 	pri, pub, err := keypair.GenerateKeyPair(keypair.PK_ETHECDSA, nil)
 	a.Nil(err, "fail")
-	sig, err := Sign(KECCAK256WithECDSA, pri, digest, nil)
+	sig, err := Sign(KECCAK256WithECDSA, pri, digest, false)
 	a.Nil(err, "fail")
 	a.Equal(sig.Scheme, KECCAK256WithECDSA, "fail")
 
