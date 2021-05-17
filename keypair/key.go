@@ -108,7 +108,7 @@ func GenerateKeyPair(t KeyType, opts interface{}) (PrivateKey, PublicKey, error)
 		if err != nil {
 			return nil, nil, err
 		}
-		return privateKeyECDSA, privateKeyECDSA.PublicKey, nil
+		return privateKeyECDSA, privateKeyECDSA.Public(), nil
 
 	default:
 		return nil, nil, errors.New(err_generate + "unknown algorithm")
@@ -128,7 +128,7 @@ func GetKeyType(p PublicKey) KeyType {
 		}
 	case ed25519.PublicKey:
 		return PK_EDDSA
-	case ecdsa.PublicKey:
+	case *ecdsa.PublicKey:
 		return PK_ETHECDSA
 	default:
 		panic("unknown public key type")
@@ -183,9 +183,9 @@ func SerializePublicKey(key PublicKey) []byte {
 		buf.WriteByte(byte(PK_EDDSA))
 		buf.WriteByte(ED25519)
 		buf.Write([]byte(t))
-	case ecdsa.PublicKey:
+	case *ecdsa.PublicKey:
 		buf.WriteByte(byte(PK_ETHECDSA))
-		buf.Write(ethcrypto.FromECDSAPub(&t))
+		buf.Write(ethcrypto.FromECDSAPub(t))
 	default:
 		panic("unknown public key type")
 	}
@@ -384,10 +384,10 @@ func ComparePublicKey(k0, k1 PublicKey) bool {
 		if bytes.Compare(v0, v1) == 0 {
 			return true
 		}
-	case ecdsa.PublicKey:
-		right := k1.(ecdsa.PublicKey)
+	case *ecdsa.PublicKey:
+		right := k1.(*ecdsa.PublicKey)
 
-		return v0.Equal(&right)
+		return v0.Equal(right)
 	}
 
 	return false

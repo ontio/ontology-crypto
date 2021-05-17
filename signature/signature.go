@@ -195,11 +195,11 @@ func Verify(pub crypto.PublicKey, msg []byte, sig *Signature) bool {
 			v := sig.Value.([]byte)
 			res = ed25519.Verify(key, msg, v)
 		}
-	case ecdsa.PublicKey:
+	case *ecdsa.PublicKey:
 		if sig.Scheme != KECCAK256WithECDSA {
 			return false
 		}
-		kb := ethcrypto.FromECDSAPub(&key)
+		kb := ethcrypto.FromECDSAPub(key)
 		sig := sig.Value.([]byte)
 		sig = sig[:ethcrypto.RecoveryIDOffset] // remove recovery id
 
