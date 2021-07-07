@@ -107,7 +107,9 @@ func GenerateKeyPair(t KeyType, opts interface{}) (PrivateKey, PublicKey, error)
 		if err != nil {
 			return nil, nil, err
 		}
-		return privateKeyECDSA, privateKeyECDSA.Public(), nil
+		priWrapper := &ec.EthereumPrivateKey{privateKeyECDSA}
+		pubWrapper := &ec.EthereumPublicKey{&privateKeyECDSA.PublicKey}
+		return priWrapper, pubWrapper, nil
 
 	default:
 		return nil, nil, errors.New(err_generate + "unknown algorithm")
@@ -127,7 +129,7 @@ func GetKeyType(p PublicKey) KeyType {
 		}
 	case ed25519.PublicKey:
 		return PK_EDDSA
-	case *ecdsa.PublicKey:
+	case *ec.EthereumPublicKey:
 		return PK_ETHECDSA
 	default:
 		panic("unknown public key type")
@@ -137,7 +139,7 @@ func GetKeyType(p PublicKey) KeyType {
 // IsEtherKey check the PublicKey is ethereum type key
 func IsEthereumPubKey(p PublicKey) bool {
 	switch p.(type) {
-	case *ecdsa.PublicKey:
+	case *ec.EthereumPublicKey:
 		return true
 	default:
 		return false
@@ -192,9 +194,9 @@ func SerializePublicKey(key PublicKey) []byte {
 		buf.WriteByte(byte(PK_EDDSA))
 		buf.WriteByte(ED25519)
 		buf.Write([]byte(t))
-	case *ecdsa.PublicKey:
+	case *ec.EthereumPublicKey:
 		buf.WriteByte(byte(PK_ETHECDSA))
-		buf.Write(ethcrypto.FromECDSAPub(t))
+		buf.Write(ethcrypto.FromECDSAPub(t.PublicKey))
 	default:
 		panic("unknown public key type")
 	}
@@ -253,7 +255,12 @@ func DeserializePublicKey(data []byte) (PublicKey, error) {
 		}
 		return pk, nil
 	case PK_ETHECDSA:
-		return ethcrypto.UnmarshalPubkey(data[1:])
+		epub, err := ethcrypto.UnmarshalPubkey(data[1:])
+		if err != nil {
+			return nil, err
+		}
+		w := &ec.EthereumPublicKey{epub}
+		return w, nil
 
 	default:
 		return nil, errors.New("deserializing public key failed: unrecognized algorithm label")
@@ -309,9 +316,9 @@ func SerializePrivateKey(pri PrivateKey) []byte {
 		buf.WriteByte(byte(PK_EDDSA))
 		buf.WriteByte(byte(ED25519))
 		buf.Write(t)
-	case *ecdsa.PrivateKey:
+	case *ec.EthereumPrivateKey:
 		buf.WriteByte(byte(PK_ETHECDSA))
-		buf.Write(ethcrypto.FromECDSA(t))
+		buf.Write(ethcrypto.FromECDSA(t.PrivateKey))
 
 	default:
 		panic("unkown private key type")
@@ -369,7 +376,13 @@ func DeserializePrivateKey(data []byte) (pri PrivateKey, err error) {
 			return
 		}
 	case PK_ETHECDSA:
-		return ethcrypto.ToECDSA(data[1:])
+		epri, err := ethcrypto.ToECDSA(data[1:])
+		if err != nil {
+			return nil, err
+		}
+		w := &ec.EthereumPrivateKey{epri}
+		return w, nil
+
 	}
 
 	return
@@ -393,10 +406,10 @@ func ComparePublicKey(k0, k1 PublicKey) bool {
 		if bytes.Compare(v0, v1) == 0 {
 			return true
 		}
-	case *ecdsa.PublicKey:
-		right := k1.(*ecdsa.PublicKey)
+	case *ec.EthereumPublicKey:
+		right := k1.(*ec.EthereumPublicKey)
 
-		return v0.Equal(right)
+		return v0.PublicKey.Equal(right.PublicKey)
 	}
 
 	return false

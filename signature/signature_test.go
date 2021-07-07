@@ -538,11 +538,11 @@ func TestSignEthRawMsg(t *testing.T) {
 	a.Equal(sig.Scheme, KECCAK256WithECDSA, "fail")
 
 	// check the sign same with ethereum sign
-	epri, ok := pri.(*ecdsa.PrivateKey)
+	epri, ok := pri.(*ec.EthereumPrivateKey)
 	a.True(ok, "fail")
 	h := GetHash(KECCAK256WithECDSA)
 	h.Write(msg)
-	esign, err := crypto.Sign(h.Sum(nil), epri)
+	esign, err := crypto.Sign(h.Sum(nil), epri.PrivateKey)
 	a.Nil(err, "fail")
 	a.Equal(esign, sig.Value.([]byte), "fail")
 	// ethereum sign data len
@@ -588,8 +588,8 @@ func TestSignEthHashed(t *testing.T) {
 	a.Equal(recb, sig, "fail")
 
 	// should have same signed message
-	ep := pri.(*ecdsa.PrivateKey)
-	sig2, err := crypto.Sign(digest, ep)
+	ep := pri.(*ec.EthereumPrivateKey)
+	sig2, err := crypto.Sign(digest, ep.PrivateKey)
 	a.Nil(err, "fail")
-	a.Equal(sig2, sig.Value.([]byte), "ethereum should have same sign with")
+	a.Equal(sig2, sig.Value.([]byte), "ethereum should have same sign with ontology")
 }

@@ -50,6 +50,14 @@ type PublicKey struct {
 	*ecdsa.PublicKey
 }
 
+type EthereumPrivateKey struct {
+	*ecdsa.PrivateKey
+}
+
+type EthereumPublicKey struct {
+	*ecdsa.PublicKey
+}
+
 func (this *PrivateKey) Public() crypto.PublicKey {
 	return &PublicKey{Algorithm: this.Algorithm, PublicKey: &this.PublicKey}
 }

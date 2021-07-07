@@ -247,19 +247,20 @@ func TestGenerateEth(t *testing.T) {
 	a.Equal(tp, PK_ETHECDSA, "fail")
 
 	b := SerializePublicKey(pub)
-	_, err = DeserializePublicKey(b)
+	seriPub, err := DeserializePublicKey(b)
 	a.Nil(err, "fail")
+	a.True(ComparePublicKey(pub, seriPub), "fail")
 
-	epub, ok := pub.(*ecdsa.PublicKey)
+	epub, ok := pub.(*ec.EthereumPublicKey)
 	a.True(ok, "fail cast")
-	eb := crypto.FromECDSAPub(epub)
+	eb := crypto.FromECDSAPub(epub.PublicKey)
 	a.Equal(b[1:], eb, "fail")
 	a.Equal(b[0], byte(PK_ETHECDSA), "fail")
 
-	epri, ok := pri.(*ecdsa.PrivateKey)
+	epri, ok := pri.(*ec.EthereumPrivateKey)
 	a.True(ok, "fail to cast")
 
-	eprib := crypto.FromECDSA(epri)
+	eprib := crypto.FromECDSA(epri.PrivateKey)
 	b = SerializePrivateKey(pri)
 	a.Equal(b[1:], eprib, "fail")
 	a.Equal(b[0], byte(PK_ETHECDSA), "fail")

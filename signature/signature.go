@@ -121,7 +121,7 @@ func Sign(scheme SignatureScheme, pri crypto.PrivateKey, msg []byte, opt interfa
 			return
 		}
 		res.Value = ed25519.Sign(key, msg)
-	case *ecdsa.PrivateKey:
+	case *ec.EthereumPrivateKey:
 		if scheme != KECCAK256WithECDSA {
 			err = errors.New("signing failed: unmatched signature scheme and private key")
 			return
@@ -144,9 +144,9 @@ func Sign(scheme SignatureScheme, pri crypto.PrivateKey, msg []byte, opt interfa
 
 			hasher.Write(msg)
 			digest := hasher.Sum(nil)
-			signedMsg, err = ethcrypto.Sign(digest, key)
+			signedMsg, err = ethcrypto.Sign(digest, key.PrivateKey)
 		} else {
-			signedMsg, err = ethcrypto.Sign(msg, key)
+			signedMsg, err = ethcrypto.Sign(msg, key.PrivateKey)
 		}
 
 		if err != nil {
@@ -202,11 +202,11 @@ func Verify(pub crypto.PublicKey, msg []byte, sig *Signature) bool {
 			v := sig.Value.([]byte)
 			res = ed25519.Verify(key, msg, v)
 		}
-	case *ecdsa.PublicKey:
+	case *ec.EthereumPublicKey:
 		if sig.Scheme != KECCAK256WithECDSA {
 			return false
 		}
-		kb := ethcrypto.FromECDSAPub(key)
+		kb := ethcrypto.FromECDSAPub(key.PublicKey)
 		sig := sig.Value.([]byte)
 		sig = sig[:ethcrypto.RecoveryIDOffset] // remove recovery id
 
