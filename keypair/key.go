@@ -41,7 +41,6 @@ import (
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	base58 "github.com/itchyny/base58-go"
 	"github.com/ontio/ontology-crypto/ec"
-
 	"golang.org/x/crypto/ed25519"
 )
 
@@ -132,6 +131,16 @@ func GetKeyType(p PublicKey) KeyType {
 		return PK_ETHECDSA
 	default:
 		panic("unknown public key type")
+	}
+}
+
+// IsEtherKey check the PublicKey is ethereum type key
+func IsEthereumPubKey(p PublicKey) bool {
+	switch p.(type) {
+	case *ecdsa.PublicKey:
+		return true
+	default:
+		return false
 	}
 }
 

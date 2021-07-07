@@ -537,6 +537,17 @@ func TestSignEthRawMsg(t *testing.T) {
 	a.Nil(err, "fail")
 	a.Equal(sig.Scheme, KECCAK256WithECDSA, "fail")
 
+	// check the sign same with ethereum sign
+	epri, ok := pri.(*ecdsa.PrivateKey)
+	a.True(ok, "fail")
+	h := GetHash(KECCAK256WithECDSA)
+	h.Write(msg)
+	esign, err := crypto.Sign(h.Sum(nil), epri)
+	a.Nil(err, "fail")
+	a.Equal(esign, sig.Value.([]byte), "fail")
+	// ethereum sign data len
+	a.Equal(len(sig.Value.([]byte)), 65, "fail")
+
 	ret := Verify(pub, msg, sig)
 	a.True(ret, "fail")
 

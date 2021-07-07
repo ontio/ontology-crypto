@@ -26,6 +26,7 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ontio/ontology-crypto/ec"
 	"github.com/ontio/ontology-crypto/sm2"
 	"github.com/stretchr/testify/require"
@@ -249,7 +250,20 @@ func TestGenerateEth(t *testing.T) {
 	_, err = DeserializePublicKey(b)
 	a.Nil(err, "fail")
 
+	epub, ok := pub.(*ecdsa.PublicKey)
+	a.True(ok, "fail cast")
+	eb := crypto.FromECDSAPub(epub)
+	a.Equal(b[1:], eb, "fail")
+	a.Equal(b[0], byte(PK_ETHECDSA), "fail")
+
+	epri, ok := pri.(*ecdsa.PrivateKey)
+	a.True(ok, "fail to cast")
+
+	eprib := crypto.FromECDSA(epri)
 	b = SerializePrivateKey(pri)
+	a.Equal(b[1:], eprib, "fail")
+	a.Equal(b[0], byte(PK_ETHECDSA), "fail")
+
 	_, err = DeserializePrivateKey(b)
 	a.Nil(err, "fail")
 

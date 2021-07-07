@@ -297,6 +297,7 @@ func Deserialize(buf []byte) (*Signature, error) {
 
 	var sig Signature
 	var data []byte
+	// NOTE: ethereum sign message is 65
 	if len(buf) == 64 {
 		data = buf
 		sig.Scheme = SHA256withECDSA
