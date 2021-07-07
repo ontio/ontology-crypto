@@ -65,6 +65,10 @@ const (
 	PK_P256_NC KeyType = 0x04
 )
 
+var (
+	notEtherErr = errors.New("pubkey is not ethereum publickey")
+)
+
 const err_generate = "key pair generation failed, "
 
 // GenerateKeyPair generates a pair of private and public keys in type t.
@@ -136,13 +140,13 @@ func GetKeyType(p PublicKey) KeyType {
 	}
 }
 
-// IsEtherKey check the PublicKey is ethereum type key
-func IsEthereumPubKey(p PublicKey) bool {
-	switch p.(type) {
+// GetEthereumPubKey get the underline key
+func GetEthereumPubKey(p PublicKey) (*ec.EthereumPublicKey, error) {
+	switch ep := p.(type) {
 	case *ec.EthereumPublicKey:
-		return true
+		return ep, nil
 	default:
-		return false
+		return nil, notEtherErr
 	}
 }
 
