@@ -441,3 +441,11 @@ func GetP256KeyPairFromWIF(wif []byte) (PrivateKey, error) {
 	pri := ec.ConstructPrivateKey(buf[1:pos-1], elliptic.P256())
 	return &ec.PrivateKey{Algorithm: ec.ECDSA, PrivateKey: pri}, nil
 }
+
+// FromEthereumPrivateKey convert Ethereum PrivateKey to ontology keypair
+func FromEthereumPrivateKey(key *ecdsa.PrivateKey) (PrivateKey, PublicKey) {
+	priWrapper := &ec.EthereumPrivateKey{key}
+	pubWrapper := &ec.EthereumPublicKey{&key.PublicKey}
+
+	return priWrapper, pubWrapper
+}
