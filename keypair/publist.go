@@ -36,6 +36,7 @@ import (
 //           2.1.2. else if x values are different, then sorted by x.
 //           2.1.3. else sorted by y.
 //       2.2. EdDSA: sorted by the byte sequence directly.
+//       2.3. ETHECDSA: sort just by (x, y), same as 2.1
 func SortPublicKeys(list []PublicKey) []PublicKey {
 	pl := publicKeyList(list)
 	sort.Sort(pl)
