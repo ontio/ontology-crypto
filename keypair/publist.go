@@ -81,6 +81,19 @@ func (this publicKeyList) Less(i, j int) bool {
 		va := a.(ed25519.PublicKey)
 		vb := b.(ed25519.PublicKey)
 		return bytes.Compare(va, vb) < 0
+	case PK_ETHECDSA:
+		va := a.(*ec.EthereumPublicKey)
+		vb := b.(*ec.EthereumPublicKey)
+
+		// ethereum will get the same curve as btc, in our library: SECP256K1, so no curve compare
+		// just the (x, y)
+		cmp := va.X.Cmp(vb.X)
+		if cmp != 0 {
+			return cmp < 0
+		}
+		cmp = va.Y.Cmp(vb.Y)
+		return cmp < 0
+
 	default:
 		panic("error key type")
 	}
