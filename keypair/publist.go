@@ -36,6 +36,7 @@ import (
 //           2.1.2. else if x values are different, then sorted by x.
 //           2.1.3. else sorted by y.
 //       2.2. EdDSA: sorted by the byte sequence directly.
+//       2.3. ETHECDSA: sort just by (x, y), same as 2.1
 func SortPublicKeys(list []PublicKey) []PublicKey {
 	pl := publicKeyList(list)
 	sort.Sort(pl)
@@ -81,6 +82,19 @@ func (this publicKeyList) Less(i, j int) bool {
 		va := a.(ed25519.PublicKey)
 		vb := b.(ed25519.PublicKey)
 		return bytes.Compare(va, vb) < 0
+	case PK_ETHECDSA:
+		va := a.(*ec.EthereumPublicKey)
+		vb := b.(*ec.EthereumPublicKey)
+
+		// ethereum will get the same curve as btc, in our library: SECP256K1, so no curve compare
+		// just the (x, y)
+		cmp := va.X.Cmp(vb.X)
+		if cmp != 0 {
+			return cmp < 0
+		}
+		cmp = va.Y.Cmp(vb.Y)
+		return cmp < 0
+
 	default:
 		panic("error key type")
 	}
