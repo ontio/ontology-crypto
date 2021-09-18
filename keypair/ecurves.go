@@ -89,6 +89,9 @@ func GetNamedCurveLabel(name string) (byte, error) {
 		return SM2P256V1, nil
 	case strings.ToUpper(btcec.S256().Name):
 		return SECP256K1, nil
+	// old version btcec.S256().Name is empty, compatiable with this case
+	case "":
+		return SECP256K1, nil
 	default:
 		return 0, errors.New("unsupported elliptic curve")
 	}

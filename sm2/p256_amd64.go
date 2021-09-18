@@ -27,6 +27,7 @@
 // https://eprint.iacr.org/2013/816.pdf
 // modify for sm2. Zhang Wei <d5c5ceb0@gmail.com>
 
+//go:build amd64
 // +build amd64
 
 package sm2
