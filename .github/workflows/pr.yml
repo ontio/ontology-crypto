@@ -3,6 +3,9 @@ on:
     branches:
     - master
 
+  push:
+    branches:
+    - fix-btcec-name
 
 jobs:
 
