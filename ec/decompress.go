@@ -23,8 +23,9 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"errors"
-	"github.com/btcsuite/btcd/btcec"
 	"math/big"
+
+	"github.com/btcsuite/btcd/btcec"
 )
 
 func getLowestSetBit(k *big.Int) int {
