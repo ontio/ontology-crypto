@@ -54,10 +54,10 @@ type SM2Signature struct {
 //
 // Some signature scheme may use extra parameters, which could be inputted via
 // the last argument @opt:
-// - SM2 signature needs the user ID (string). If it is an empty string, the
-//   default ID ("1234567812345678") would be used.
-// - keccak256ecdsa applyHash : true  -> hash(msg) -> sign digest
-//                              false -> msg is already a 32 bytes long hashed value
+//   - SM2 signature needs the user ID (string). If it is an empty string, the
+//     default ID ("1234567812345678") would be used.
+//   - keccak256ecdsa applyHash : true  -> hash(msg) -> sign digest
+//     false -> msg is already a 32 bytes long hashed value
 func Sign(scheme SignatureScheme, pri crypto.PrivateKey, msg []byte, opt interface{}) (sig *Signature, err error) {
 	var res Signature
 	res.Scheme = scheme
@@ -208,6 +208,9 @@ func Verify(pub crypto.PublicKey, msg []byte, sig *Signature) bool {
 		}
 		kb := ethcrypto.FromECDSAPub(key.PublicKey)
 		sig := sig.Value.([]byte)
+		if len(sig) < ethcrypto.SignatureLength {
+			return false
+		}
 		sig = sig[:ethcrypto.RecoveryIDOffset] // remove recovery id
 
 		if len(msg) != ethcrypto.DigestLength {
@@ -231,17 +234,17 @@ func Verify(pub crypto.PublicKey, msg []byte, sig *Signature) bool {
 
 // Serialize the signature object to byte array as the following format:
 //
-//     |---------------------------|-----------------|
-//     | signature_scheme (1 byte) | signature_data  |
-//     |---------------------------|-----------------|
+//	|---------------------------|-----------------|
+//	| signature_scheme (1 byte) | signature_data  |
+//	|---------------------------|-----------------|
 //
 // signature_data differs in the signature algorithm.
-// - For ECDSA, it is the concatenation of two byte arrays of equal length
-//   converted from R and S.
-// - For SM2, it starts with the user ID (empty if not specified) with a `0`
-//   as termination, and followed by the R and S data as described in ECDSA.
-// - For EdDSA, it is just the signature data which could be handled by package
-//   ed25519.
+//   - For ECDSA, it is the concatenation of two byte arrays of equal length
+//     converted from R and S.
+//   - For SM2, it starts with the user ID (empty if not specified) with a `0`
+//     as termination, and followed by the R and S data as described in ECDSA.
+//   - For EdDSA, it is just the signature data which could be handled by package
+//     ed25519.
 func Serialize(sig *Signature) ([]byte, error) {
 	if sig == nil {
 		return nil, errors.New("failed serializing signature: input is nil")
