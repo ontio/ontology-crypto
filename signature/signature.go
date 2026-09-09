@@ -27,7 +27,7 @@ import (
 	"errors"
 	"math/big"
 
-	"github.com/btcsuite/btcd/btcec"
+	"github.com/btcsuite/btcd/btcec/v2"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/ontio/ontology-crypto/ec"
 	"github.com/ontio/ontology-crypto/sm2"

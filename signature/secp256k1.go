@@ -1,22 +1,33 @@
 package signature
 
 import (
+	"crypto/elliptic"
 	"errors"
 
-	"github.com/btcsuite/btcd/btcec"
+	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/btcsuite/btcd/btcec/v2/ecdsa"
 	"github.com/ontio/ontology-crypto/ec"
 )
 
 func Secp256k1Sign(pri *ec.PrivateKey, hash []byte) ([]byte, error) {
-	return btcec.SignCompact(btcec.S256(), (*btcec.PrivateKey)(pri.PrivateKey), hash, false)
+	// btcec/v2's PrivateKey is no longer ecdsa.PrivateKey-shaped (it wraps
+	// decred/dcrd's own secp256k1 type), so it can't be built with a type
+	// conversion like the old btcec.PrivateKey could. Reconstruct it from
+	// the same scalar bytes instead.
+	privKey, _ := btcec.PrivKeyFromBytes(pri.D.Bytes())
+	return ecdsa.SignCompact(privKey, hash, false)
 }
 
 func Secp256k1Verify(pub *ec.PublicKey, hash []byte, sig []byte) bool {
-	recKey, _, err := btcec.RecoverCompact(btcec.S256(), sig, hash)
+	recKey, _, err := ecdsa.RecoverCompact(sig, hash)
 	if err != nil {
 		return false
 	}
-	return recKey.IsEqual((*btcec.PublicKey)(pub.PublicKey))
+	wantKey, err := btcec.ParsePubKey(elliptic.Marshal(pub.Curve, pub.X, pub.Y))
+	if err != nil {
+		return false
+	}
+	return recKey.IsEqual(wantKey)
 }
 
 func ConvertToEthCompatible(sig []byte) ([]byte, error) {

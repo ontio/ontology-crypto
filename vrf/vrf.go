@@ -25,7 +25,7 @@ import (
 	"errors"
 	"hash"
 
-	"github.com/btcsuite/btcd/btcec"
+	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/ontio/ontology-crypto/ec"
 	"github.com/ontio/ontology-crypto/keypair"
 	"github.com/ontio/ontology-crypto/sm3"
