@@ -379,11 +379,13 @@ func DeserializePrivateKey(data []byte) (pri PrivateKey, err error) {
 
 	case PK_EDDSA:
 		if data[1] == ED25519 {
-			if len(data) < 2+ed25519.PrivateKeySize {
-				err = errors.New("deserializing private key failed: not enough length for Ed25519 key")
+			if len(data) != 2+ed25519.PrivateKeySize {
+				err = errors.New("deserializing private key failed: invalid length for Ed25519 key")
 				return
 			}
-			pri = ed25519.PrivateKey(data[2:])
+			key := make([]byte, ed25519.PrivateKeySize)
+			copy(key, data[2:])
+			pri = ed25519.PrivateKey(key)
 		} else {
 			err = errors.New("deserializing private key failed: unknown EdDSA curve type")
 			return

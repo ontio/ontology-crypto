@@ -18,7 +18,11 @@
 
 package keypair
 
-import "testing"
+import (
+	"testing"
+
+	"golang.org/x/crypto/ed25519"
+)
 
 // TestParsersDoNotPanicOnShortInput exercises the public parsers with inputs
 // that previously triggered index-out-of-range panics.
@@ -73,5 +77,52 @@ func TestParsersDoNotPanicOnShortInput(t *testing.T) {
 func TestDeserializePrivateKeyUnknownAlgorithm(t *testing.T) {
 	if _, err := DeserializePrivateKey([]byte{0xee, 0x01}); err == nil {
 		t.Error("expected error for unknown algorithm label")
+	}
+}
+
+func TestDeserializeEd25519PrivateKeyRequiresExactLength(t *testing.T) {
+	pri, _, err := GenerateKeyPair(PK_EDDSA, ED25519)
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw := SerializePrivateKey(pri)
+	if _, err := DeserializePrivateKey(raw); err != nil {
+		t.Fatalf("exact-length key rejected: %v", err)
+	}
+
+	// Trailing data must be rejected rather than silently included in the key.
+	extended := append(append([]byte{}, raw...), 0x00)
+	if _, err := DeserializePrivateKey(extended); err == nil {
+		t.Error("expected error for Ed25519 private key with trailing data")
+	}
+
+	// Truncated data must be rejected too.
+	if _, err := DeserializePrivateKey(raw[:len(raw)-1]); err == nil {
+		t.Error("expected error for truncated Ed25519 private key")
+	}
+}
+
+func TestDeserializeEd25519PrivateKeyIsCopied(t *testing.T) {
+	pri, _, err := GenerateKeyPair(PK_EDDSA, ED25519)
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw := SerializePrivateKey(pri)
+	parsed, err := DeserializePrivateKey(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	key := parsed.(ed25519.PrivateKey)
+	original := append([]byte{}, key...)
+
+	// Mutating the source buffer must not affect the parsed key.
+	for i := 2; i < len(raw); i++ {
+		raw[i] = 0xff
+	}
+	if string(key) != string(original) {
+		t.Error("deserialized Ed25519 key aliases the input buffer")
+	}
+	if len(key) != ed25519.PrivateKeySize {
+		t.Errorf("unexpected key size %d", len(key))
 	}
 }
