@@ -145,7 +145,14 @@ func DecryptWithCustomScrypt(prot *ProtectedKey, pwd []byte, param *ScryptParam)
 			return nil, NewDecryptError(err.Error())
 		}
 	case "aes-256-ctr":
-		// ctr mode is remain for old accounts and should be removed later
+		// Legacy format kept only for old accounts.
+		//
+		// AES-CTR provides confidentiality but no integrity: the ciphertext
+		// can be flipped bit by bit without detection, and the derived key /
+		// IV come from a deterministic salt derived from the address. New
+		// accounts must use the "aes-256-gcm" format above. Migrate old keys
+		// by decrypting and re-encrypting with EncryptWithCustomScrypt; do not
+		// change the on-disk format in place.
 
 		// generate salt from the address
 		salt := saltFromAddress(prot.Address)

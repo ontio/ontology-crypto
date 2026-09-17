@@ -16,6 +16,16 @@
  * along with The ontology.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+// Package aes provides legacy AES helpers kept for backward compatibility.
+//
+// AesEncrypt and AesDecrypt implement AES-CBC with PKCS#7 padding. CBC
+// provides confidentiality only and does not authenticate the ciphertext, so a
+// tampered message can decrypt to attacker-influenced plaintext and the
+// padding check can be abused as a padding oracle. These functions exist only
+// to read data produced by older releases.
+//
+// New formats must use an authenticated encryption mode such as AES-GCM (see
+// keypair.EncryptWithCustomScrypt) instead of the raw CBC helpers here.
 package aes
 
 import (
@@ -25,6 +35,10 @@ import (
 	"errors"
 )
 
+// AesEncrypt encrypts plaintext with AES-CBC and PKCS#7 padding.
+//
+// The returned ciphertext is NOT authenticated. Do not use this function for
+// new formats; use an AEAD instead.
 func AesEncrypt(plaintext []byte, key []byte, iv []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
@@ -40,6 +54,10 @@ func AesEncrypt(plaintext []byte, key []byte, iv []byte) ([]byte, error) {
 	return ciphertext, nil
 }
 
+// AesDecrypt decrypts an AES-CBC ciphertext produced by AesEncrypt.
+//
+// The ciphertext is not authenticated, so a successful return does not prove
+// the data was not modified. Prefer an AEAD for new formats.
 func AesDecrypt(ciphertext []byte, key []byte, iv []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
