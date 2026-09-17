@@ -69,3 +69,16 @@ func TestUnPaddingValidation(t *testing.T) {
 		t.Error("expected error for invalid block size")
 	}
 }
+
+func TestCBCRejectsWrongIVLength(t *testing.T) {
+	key := make([]byte, 16)
+	for _, ivLen := range []int{0, 15, 17} {
+		iv := make([]byte, ivLen)
+		if _, err := AesEncrypt([]byte("plaintext"), key, iv); err == nil {
+			t.Errorf("AesEncrypt: expected error for %d-byte IV", ivLen)
+		}
+		if _, err := AesDecrypt(make([]byte, 16), key, iv); err == nil {
+			t.Errorf("AesDecrypt: expected error for %d-byte IV", ivLen)
+		}
+	}
+}

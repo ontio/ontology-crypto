@@ -45,6 +45,9 @@ func AesEncrypt(plaintext []byte, key []byte, iv []byte) ([]byte, error) {
 		return nil, errors.New("invalid decrypt key")
 	}
 	blockSize := block.BlockSize()
+	if len(iv) != blockSize {
+		return nil, errors.New("invalid IV length")
+	}
 	plaintext = PKCS5Padding(plaintext, blockSize)
 	blockMode := cipher.NewCBCEncrypter(block, iv)
 
@@ -65,6 +68,10 @@ func AesDecrypt(ciphertext []byte, key []byte, iv []byte) ([]byte, error) {
 	}
 
 	blockSize := block.BlockSize()
+
+	if len(iv) != blockSize {
+		return nil, errors.New("invalid IV length")
+	}
 
 	if len(ciphertext) < blockSize {
 		return nil, errors.New("ciphertext too short")
