@@ -48,6 +48,18 @@ func TestEncryptRejectsEmptyMessage(t *testing.T) {
 	}
 }
 
+func TestSm3KdfDerivesRequestedLength(t *testing.T) {
+	for _, n := range []int{1, 31, 32, 33, 64, 200} {
+		out, ret := sm3kdf([]byte("seed"), n)
+		if ret != n || len(out) != n {
+			t.Errorf("kLen=%d: got len(out)=%d ret=%d", n, len(out), ret)
+		}
+	}
+	if out, ret := sm3kdf([]byte("seed"), 0); ret != 0 || out != nil {
+		t.Errorf("zero length request: expected (nil, 0), got (%x, %d)", out, ret)
+	}
+}
+
 func TestDecryptRejectsShortCiphertext(t *testing.T) {
 	priv, err := ecdsa.GenerateKey(SM2P256V1(), rand.Reader)
 	if err != nil {

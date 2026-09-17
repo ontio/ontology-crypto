@@ -65,20 +65,16 @@ func sm3kdf(zInput []byte, kLen int) ([]byte, int) {
 		i++
 	}
 
-	rLen = 0
-	pLen := len(pp)
-	for i = 0; i < zLen && i < pLen; i++ {
-		if (pp[i] & 0xFF) != 0 {
-			rLen = 1
-			break
+	// GB/T 32918 requires the whole derived key to be rejected when every
+	// output byte is zero. The previous loop only scanned the first
+	// min(len(pp), len(zInput)) bytes, so trailing zero-only words went
+	// unchecked for long messages.
+	for _, b := range pp {
+		if b != 0 {
+			return pp, len(pp)
 		}
 	}
-
-	if rLen > 0 {
-		return pp, len(pp)
-	} else {
-		return nil, 0
-	}
+	return nil, 0
 }
 
 func Encrypt(pub *ecdsa.PublicKey, data []byte) ([]byte, error) {
