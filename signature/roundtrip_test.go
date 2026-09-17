@@ -150,3 +150,33 @@ func TestDeserializeDSASignatureRejectsMalformed(t *testing.T) {
 		t.Error("expected error for out-of-range SM2 components")
 	}
 }
+
+func TestConvertToEthCompatibleDoesNotMutateInput(t *testing.T) {
+	pri, _, err := keypair.GenerateKeyPair(keypair.PK_ECDSA, keypair.SECP256K1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sig, err := Sign(SHA3_256withECDSA, pri, []byte("message"), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := Serialize(sig)
+	if err != nil {
+		t.Fatal(err)
+	}
+	original := append([]byte{}, b...)
+
+	if _, err := ConvertToEthCompatible(b); err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(b, original) {
+		t.Error("ConvertToEthCompatible modified its input buffer")
+	}
+
+	// A compact signature header below 27 used to underflow when subtracting 27.
+	bad := append([]byte{}, b...)
+	bad[1] = 0x01
+	if _, err := ConvertToEthCompatible(bad); err == nil {
+		t.Error("expected an error for an out-of-range compact signature header")
+	}
+}

@@ -34,8 +34,20 @@ func ConvertToEthCompatible(sig []byte) ([]byte, error) {
 		return nil, errors.New("invalid signature length")
 	}
 
+	// The compact signature header encodes the recovery id: btcec writes
+	// 27+recid for uncompressed keys and 31+recid for compressed keys. Reject
+	// anything outside that range instead of underflowing on t[0]-27.
+	if t[0] < 27 || t[0] > 34 {
+		return nil, errors.New("invalid compact signature header")
+	}
 	v := t[0] - 27
-	copy(t, t[1:])
-	t[64] = v
-	return t, nil
+	if v >= 4 {
+		v -= 4 // strip the compressed-key offset
+	}
+
+	// Build a new buffer so the caller's input is not modified in place.
+	res := make([]byte, 65)
+	copy(res[:64], t[1:])
+	res[64] = v
+	return res, nil
 }
