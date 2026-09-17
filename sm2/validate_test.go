@@ -23,11 +23,28 @@ import (
 	"crypto/ecdsa"
 	"crypto/rand"
 	"math/big"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/ontio/ontology-crypto/sm3"
 )
+
+func TestSignRejectsOverlongUserID(t *testing.T) {
+	priv, err := ecdsa.GenerateKey(SM2P256V1(), rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// ENTL can only encode up to 8191 bytes of user ID.
+	if _, _, err := Sign(rand.Reader, priv, strings.Repeat("a", 8192), []byte("msg"), sm3.New()); err == nil {
+		t.Error("expected an error for an overlong user ID")
+	}
+
+	if _, _, err := Sign(rand.Reader, priv, strings.Repeat("a", 8191), []byte("msg"), sm3.New()); err != nil {
+		t.Errorf("8191-byte user ID should be accepted: %v", err)
+	}
+}
 
 func TestEncryptRejectsEmptyMessage(t *testing.T) {
 	priv, err := ecdsa.GenerateKey(SM2P256V1(), rand.Reader)

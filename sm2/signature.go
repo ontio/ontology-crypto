@@ -107,8 +107,14 @@ func getZ(msg []byte, pub *ecdsa.PublicKey, userID string, hasher hash.Hash) ([]
 		userID = DEFAULT_ID
 	}
 	id := []byte(userID)
-	len := len(id) * 8
-	blen := []byte{byte((len >> 8) & 0xff), byte(len & 0xff)}
+	// ENTL is a two byte big-endian bit length, so the ID must fit in 8191
+	// bytes; anything longer would silently wrap around and produce an
+	// ambiguous ZA input.
+	if len(id) > 8191 {
+		return nil, errors.New("sm2: user ID is too long")
+	}
+	bitLen := len(id) * 8
+	blen := []byte{byte((bitLen >> 8) & 0xff), byte(bitLen & 0xff)}
 
 	hasher.Reset()
 	hasher.Write(blen)
