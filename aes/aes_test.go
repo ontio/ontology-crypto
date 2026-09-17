@@ -18,13 +18,54 @@
 
 package aes
 
-import "testing"
+import (
+	"bytes"
+	"testing"
+)
 
 func TestUnpaddingDoesNotPanicOnEmptyInput(t *testing.T) {
-	if _, err := PKCS5UnPadding(nil); err == nil {
+	if _, err := PKCS5UnPadding(nil, 16); err == nil {
 		t.Error("expected error for empty input")
 	}
-	if _, err := PKCS5UnPadding([]byte{}); err == nil {
+	if _, err := PKCS5UnPadding([]byte{}, 16); err == nil {
 		t.Error("expected error for empty input")
+	}
+}
+
+func TestUnPaddingValidation(t *testing.T) {
+	const blockSize = 16
+
+	valid := append([]byte("hello"), bytes.Repeat([]byte{11}, 11)...)
+	if out, err := PKCS5UnPadding(valid, blockSize); err != nil || string(out) != "hello" {
+		t.Fatalf("valid padding rejected: out=%q err=%v", out, err)
+	}
+
+	// padding value 0
+	if _, err := PKCS5UnPadding(make([]byte, blockSize), blockSize); err == nil {
+		t.Error("expected error for zero padding length")
+	}
+
+	// padding value greater than the block size
+	tooBig := make([]byte, blockSize)
+	tooBig[blockSize-1] = blockSize + 1
+	if _, err := PKCS5UnPadding(tooBig, blockSize); err == nil {
+		t.Error("expected error for padding larger than block size")
+	}
+
+	// inconsistent padding bytes
+	inconsistent := bytes.Repeat([]byte{3}, blockSize)
+	inconsistent[blockSize-3] = 4
+	if _, err := PKCS5UnPadding(inconsistent, blockSize); err == nil {
+		t.Error("expected error for inconsistent padding bytes")
+	}
+
+	// length not a multiple of the block size
+	if _, err := PKCS5UnPadding(make([]byte, blockSize-1), blockSize); err == nil {
+		t.Error("expected error for non block-sized input")
+	}
+
+	// invalid block size
+	if _, err := PKCS5UnPadding(make([]byte, blockSize), 0); err == nil {
+		t.Error("expected error for invalid block size")
 	}
 }

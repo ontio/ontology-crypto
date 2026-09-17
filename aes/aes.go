@@ -60,7 +60,7 @@ func AesDecrypt(ciphertext []byte, key []byte, iv []byte) ([]byte, error) {
 
 	plaintext := make([]byte, len(ciphertext))
 	blockModel.CryptBlocks(plaintext, ciphertext)
-	return PKCS5UnPadding(plaintext)
+	return PKCS5UnPadding(plaintext, blockSize)
 }
 
 func PKCS5Padding(src []byte, blockSize int) []byte {
@@ -70,14 +70,29 @@ func PKCS5Padding(src []byte, blockSize int) []byte {
 	return append(src, padtext...)
 }
 
-func PKCS5UnPadding(src []byte) ([]byte, error) {
-	if len(src) == 0 {
-		return nil, errors.New("unpadding error: empty input")
+// PKCS5UnPadding validates and removes PKCS#7 padding from src. It rejects
+// empty input, a padding length outside [1, blockSize], a length larger than
+// the buffer and buffers whose length is not a multiple of the block size, and
+// verifies that every padding byte carries the same value.
+func PKCS5UnPadding(src []byte, blockSize int) ([]byte, error) {
+	errInvalidPadding := errors.New("unpadding error: invalid padding")
+	if blockSize <= 0 || len(src) == 0 || len(src)%blockSize != 0 {
+		return nil, errInvalidPadding
 	}
 	length := len(src)
 	unpadding := int(src[length-1])
-	if unpadding > length {
-		return nil, errors.New("unpadding error: invalid paddding length")
+	if unpadding < 1 || unpadding > blockSize || unpadding > length {
+		return nil, errInvalidPadding
+	}
+
+	// Compare every padding byte in constant time so the position of a
+	// mismatch is not observable through timing.
+	var diff byte
+	for i := length - unpadding; i < length; i++ {
+		diff |= src[i] ^ byte(unpadding)
+	}
+	if diff != 0 {
+		return nil, errInvalidPadding
 	}
 	return src[:(length - unpadding)], nil
 }
