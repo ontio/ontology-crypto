@@ -215,7 +215,10 @@ func Decrypt(priv *ecdsa.PrivateKey, encryptData []byte) ([]byte, error) {
 	c3 := sm3.Sum(tmp)
 
 	if 0 != bytes.Compare(c3[:], encryptData[64:96]) {
-		return Msg, errors.New("Hash not match!")
+		// Authentication failed: never return plaintext derived from an
+		// unauthenticated ciphertext, otherwise a caller that logs or caches
+		// the first return value would process attacker-controlled data.
+		return nil, errors.New("sm2: decryption hash mismatch")
 	}
 	return Msg, nil
 }

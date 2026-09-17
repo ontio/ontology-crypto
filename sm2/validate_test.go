@@ -19,6 +19,7 @@
 package sm2
 
 import (
+	"bytes"
 	"crypto/ecdsa"
 	"crypto/rand"
 	"math/big"
@@ -26,6 +27,35 @@ import (
 
 	"github.com/ontio/ontology-crypto/sm3"
 )
+
+func TestDecryptTamperedCiphertextReturnsNoPlaintext(t *testing.T) {
+	priv, err := ecdsa.GenerateKey(SM2P256V1(), rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	msg := []byte("authenticated message")
+	ct, err := Encrypt(&priv.PublicKey, msg)
+	if err != nil {
+		t.Fatal("encrypt:", err)
+	}
+	if pt, err := Decrypt(priv, ct); err != nil || !bytes.Equal(pt, msg) {
+		t.Fatalf("round trip failed: pt=%x err=%v", pt, err)
+	}
+
+	// Tampering with C3 (the authentication tag) must not yield plaintext.
+	tamperedC3 := append([]byte{}, ct...)
+	tamperedC3[64] ^= 0xff
+	if pt, err := Decrypt(priv, tamperedC3); err == nil || pt != nil {
+		t.Errorf("tampered C3: expected nil plaintext and error, got pt=%x err=%v", pt, err)
+	}
+
+	// Tampering with C2 must also fail authentication and return nil.
+	tamperedC2 := append([]byte{}, ct...)
+	tamperedC2[len(tamperedC2)-1] ^= 0xff
+	if pt, err := Decrypt(priv, tamperedC2); err == nil || pt != nil {
+		t.Errorf("tampered C2: expected nil plaintext and error, got pt=%x err=%v", pt, err)
+	}
+}
 
 func TestEncryptRejectsInvalidPublicKey(t *testing.T) {
 	curve := SM2P256V1()
