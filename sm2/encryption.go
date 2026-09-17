@@ -99,6 +99,13 @@ func Encrypt(pub *ecdsa.PublicKey, data []byte) ([]byte, error) {
 		return nil, err
 	}
 
+	// The SM2 KDF is defined for outputs of at least one byte. An empty
+	// message would call it with kLen == 0, which never produces key stream,
+	// so the retry loop below would spin forever.
+	if len(data) == 0 {
+		return nil, errors.New("sm2: empty message is not supported")
+	}
+
 	encryptData := make([]byte, 96+len(data))
 
 	hash := sm3.Sum(data)
@@ -136,7 +143,13 @@ func Encrypt(pub *ecdsa.PublicKey, data []byte) ([]byte, error) {
 	var k, x2, y2 *big.Int
 	c2 := make([]byte, len(data))
 
-	for {
+	for attempt := 0; ; attempt++ {
+		// The KDF must be retried only when it produced an all-zero key
+		// stream; bound the retries so a pathological RNG can never turn the
+		// loop into a denial of service.
+		if attempt >= 100 {
+			return nil, errors.New("sm2: failed to derive a non-zero key stream")
+		}
 		k, err = randFieldElement(c, cspRng)
 		if err != nil {
 			return nil, errors.New("randFieldElement error")

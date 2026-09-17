@@ -24,9 +24,29 @@ import (
 	"crypto/rand"
 	"math/big"
 	"testing"
+	"time"
 
 	"github.com/ontio/ontology-crypto/sm3"
 )
+
+func TestEncryptRejectsEmptyMessage(t *testing.T) {
+	priv, err := ecdsa.GenerateKey(SM2P256V1(), rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		if _, err := Encrypt(&priv.PublicKey, nil); err == nil {
+			t.Error("expected an explicit error for an empty message")
+		}
+	}()
+	select {
+	case <-done:
+	case <-time.After(10 * time.Second):
+		t.Fatal("Encrypt hung on an empty message")
+	}
+}
 
 func TestDecryptTamperedCiphertextReturnsNoPlaintext(t *testing.T) {
 	priv, err := ecdsa.GenerateKey(SM2P256V1(), rand.Reader)
