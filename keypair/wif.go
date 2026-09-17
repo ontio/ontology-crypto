@@ -78,6 +78,15 @@ func WIF2Key(wif []byte) (PrivateKey, error) {
 	return &ec.PrivateKey{Algorithm: ec.ECDSA, PrivateKey: pri}, nil
 }
 
+// clearBytes overwrites buf with zeros.
+//
+// This is a best-effort, defence-in-depth measure only. The Go compiler is
+// allowed to elide the writes, and nothing here can erase copies the runtime
+// or callers may have made (strings, big.Int values, slices handed to other
+// code). Do not rely on it as a guarantee of memory erasure. For a strong
+// threat model, keep private keys in an isolated process, a hardware key or OS
+// secure storage, and minimise the lifetime and number of copies of secret
+// material.
 func clearBytes(buf []byte) {
 	for i := range buf {
 		buf[i] = 0
