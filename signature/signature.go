@@ -42,6 +42,12 @@ type Signature struct {
 type DSASignature struct {
 	R, S  *big.Int
 	Curve elliptic.Curve
+
+	// size records the width, in bytes, of each signature component as it was
+	// encoded. It is used when the curve is unknown, e.g. for signatures that
+	// were just deserialized. A DSA signature scheme alone does not carry the
+	// curve, so this must be preserved to re-serialize canonically.
+	size int
 }
 
 type SM2Signature struct {
@@ -265,7 +271,11 @@ func Serialize(sig *Signature) ([]byte, error) {
 			sig.Scheme != RIPEMD160withECDSA {
 			return nil, errors.New("failed serializing signature: unmatched signature scheme and value")
 		}
-		buf.Write(serializeDSA(v))
+		data, err := serializeDSA(v)
+		if err != nil {
+			return nil, err
+		}
+		buf.Write(data)
 
 	case *SM2Signature:
 		if sig.Scheme != SM3withSM2 {
@@ -273,7 +283,11 @@ func Serialize(sig *Signature) ([]byte, error) {
 		}
 		buf.Write([]byte(v.ID))
 		buf.WriteByte(byte(0))
-		buf.Write(serializeDSA(&v.DSASignature))
+		data, err := serializeDSA(&v.DSASignature)
+		if err != nil {
+			return nil, err
+		}
+		buf.Write(data)
 	case []byte:
 		buf.Write(v)
 	default:
@@ -350,24 +364,37 @@ func Deserialize(buf []byte) (*Signature, error) {
 	return &sig, nil
 }
 
-func serializeDSA(sig *DSASignature) []byte {
+func serializeDSA(sig *DSASignature) ([]byte, error) {
 	if sig == nil || sig.R == nil || sig.S == nil {
-		panic("serializeDSA: invalid argument")
+		return nil, errors.New("failed serializing signature: invalid DSA signature")
 	}
 
-	size := (sig.Curve.Params().BitSize + 7) >> 3
-	res := make([]byte, size*2)
+	size := sig.size
+	if size <= 0 {
+		if sig.Curve == nil || sig.Curve.Params() == nil {
+			return nil, errors.New("failed serializing signature: unknown component size")
+		}
+		size = (sig.Curve.Params().BitSize + 7) >> 3
+	}
+	if size <= 0 {
+		return nil, errors.New("failed serializing signature: invalid component size")
+	}
 
 	r := sig.R.Bytes()
 	s := sig.S.Bytes()
+	if len(r) > size || len(s) > size {
+		return nil, errors.New("failed serializing signature: component wider than encoding")
+	}
+
+	res := make([]byte, size*2)
 	copy(res[size-len(r):], r)
 	copy(res[size*2-len(s):], s)
-	return res
+	return res, nil
 }
-
+ 
 func deserializeDSA(buf []byte) (*DSASignature, error) {
 	if buf == nil {
-		panic("deserializeDSA: invalid argument")
+		return nil, errors.New("invalid signature data")
 	}
 
 	length := len(buf)
@@ -376,7 +403,8 @@ func deserializeDSA(buf []byte) (*DSASignature, error) {
 	}
 
 	return &DSASignature{
-		R: new(big.Int).SetBytes(buf[0 : length/2]),
-		S: new(big.Int).SetBytes(buf[length/2:]),
+		R:    new(big.Int).SetBytes(buf[0 : length/2]),
+		S:    new(big.Int).SetBytes(buf[length/2:]),
+		size: length / 2,
 	}, nil
 }
