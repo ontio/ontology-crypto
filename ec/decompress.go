@@ -215,6 +215,9 @@ func deCompress(yTilde int, xValue []byte, curve elliptic.Curve) (*ecdsa.PublicK
 	xCoord.SetBytes(xValue)
 
 	curveParams := curve.Params()
+	if xCoord.Cmp(curveParams.P) >= 0 {
+		return nil, errors.New("invalid point compression: x out of range")
+	}
 	ySqare := big.NewInt(0)
 	//x**2 + A
 	ySqare.Exp(xCoord, big.NewInt(2), curveParams.P)
@@ -242,9 +245,13 @@ func deCompress(yTilde int, xValue []byte, curve elliptic.Curve) (*ecdsa.PublicK
 	} else {
 		yCoord.Set(yValue)
 	}
-	return &ecdsa.PublicKey{
+	pub := &ecdsa.PublicKey{
 		X:     xCoord,
 		Y:     yCoord,
 		Curve: curve,
-	}, nil
+	}
+	if err := ValidatePoint(curve, xCoord, yCoord); err != nil {
+		return nil, err
+	}
+	return pub, nil
 }

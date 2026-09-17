@@ -115,32 +115,59 @@ func DecodePublicKey(data []byte, curve elliptic.Curve) (*ecdsa.PublicKey, error
 	}
 
 	length := (curve.Params().BitSize + 7) >> 3
-	if len(data) < length+1 {
+	if len(data) == 0 {
 		return nil, errors.New("invalid data length")
 	}
 
-	var x, y *big.Int
-	x = new(big.Int).SetBytes(data[1 : length+1])
-	if data[0] == nocompress {
-		if len(data) < length*2+1 {
-			return nil, errors.New("invalid data length")
+	switch data[0] {
+	case nocompress:
+		if len(data) != length*2+1 {
+			return nil, errors.New("invalid uncompressed public key length")
 		}
-		y = new(big.Int).SetBytes(data[length+1 : length*2+1])
-		//TODO verify whether (x,y) is on the curve
-		//if !IsOnCurve(curve, x, y) {
-		//	return nil, errors.New("Point is not on the curve")
-		//}
-	} else if data[0] == compress_even || data[0] == compress_odd {
+		x := new(big.Int).SetBytes(data[1 : length+1])
+		y := new(big.Int).SetBytes(data[length+1 : length*2+1])
+		if err := ValidatePoint(curve, x, y); err != nil {
+			return nil, err
+		}
+		return &ecdsa.PublicKey{
+			X:     x,
+			Y:     y,
+			Curve: curve,
+		}, nil
+	case compress_even, compress_odd:
+		if len(data) != length+1 {
+			return nil, errors.New("invalid compressed public key length")
+		}
 		return deCompress(int(data[0]&1), data[1:length+1], curve)
-	} else {
+	default:
 		return nil, errors.New("unknown encoding mode")
 	}
+}
 
-	return &ecdsa.PublicKey{
-		X:     x,
-		Y:     y,
-		Curve: curve,
-	}, nil
+// ValidatePoint checks that (x, y) is a valid, non-infinity affine point on
+// the given curve. Both coordinates must be non-nil, non-negative, strictly
+// less than the field prime and satisfy the curve equation.
+func ValidatePoint(curve elliptic.Curve, x, y *big.Int) error {
+	if curve == nil {
+		return errors.New("unknown curve")
+	}
+	if x == nil || y == nil {
+		return errors.New("invalid public key: nil coordinate")
+	}
+	if x.Sign() < 0 || y.Sign() < 0 {
+		return errors.New("invalid public key: negative coordinate")
+	}
+	p := curve.Params().P
+	if x.Cmp(p) >= 0 || y.Cmp(p) >= 0 {
+		return errors.New("invalid public key: coordinate out of range")
+	}
+	if x.Sign() == 0 && y.Sign() == 0 {
+		return errors.New("invalid public key: point at infinity")
+	}
+	if !curve.IsOnCurve(x, y) {
+		return errors.New("invalid public key: point is not on curve")
+	}
+	return nil
 }
 
 func ConstructPrivateKey(data []byte, curve elliptic.Curve) *ecdsa.PrivateKey {
