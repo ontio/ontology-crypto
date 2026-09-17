@@ -28,7 +28,6 @@ import (
 	"crypto/sha512"
 	"crypto/subtle"
 	"errors"
-	"fmt"
 	"io"
 	"math/big"
 
@@ -69,7 +68,6 @@ func sm3kdf(zInput []byte, kLen int) ([]byte, int) {
 	rLen = 0
 	pLen := len(pp)
 	for i = 0; i < zLen && i < pLen; i++ {
-		fmt.Println(" len(pp): ", len(pp), " zLen: ", zLen, " i: ", i)
 		if (pp[i] & 0xFF) != 0 {
 			rLen = 1
 			break
