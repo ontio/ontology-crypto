@@ -121,3 +121,32 @@ func TestVerifyRejectsMalformedValues(t *testing.T) {
 		t.Error("nil public key must not verify")
 	}
 }
+
+func TestDeserializeDSASignatureRejectsMalformed(t *testing.T) {
+	// SM3withSM2, empty user ID, all-zero R and S.
+	zeros := append([]byte{byte(SM3withSM2), 0x00}, make([]byte, 64)...)
+	if _, err := Deserialize(zeros); err == nil {
+		t.Error("expected error for zero signature components")
+	}
+
+	// Components wider than the widest supported curve (P-521, 66 bytes).
+	oversized := append([]byte{byte(SHA256withECDSA)}, make([]byte, 140)...)
+	if _, err := Deserialize(oversized); err == nil {
+		t.Error("expected error for oversized signature components")
+	}
+
+	// Odd total length cannot be split into two equal components.
+	if _, err := Deserialize([]byte{byte(SHA256withECDSA), 0x01, 0x02, 0x03}); err == nil {
+		t.Error("expected error for odd signature length")
+	}
+
+	// SM2 components must fit the SM2 curve order.
+	tooBig := make([]byte, 64)
+	for i := range tooBig {
+		tooBig[i] = 0xff
+	}
+	payload := append([]byte{byte(SM3withSM2), 0x00}, tooBig...)
+	if _, err := Deserialize(payload); err == nil {
+		t.Error("expected error for out-of-range SM2 components")
+	}
+}

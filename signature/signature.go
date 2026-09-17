@@ -358,6 +358,11 @@ func Deserialize(buf []byte) (*Signature, error) {
 		if err != nil {
 			return nil, errors.New(e + err.Error())
 		}
+		// For SM2 the curve is implied by the scheme, so the component range
+		// can and must be validated here.
+		if err := validateDSAComponentRange(dsa, sm2.SM2P256V1()); err != nil {
+			return nil, errors.New(e + err.Error())
+		}
 		sig.Value = &SM2Signature{ID: id, DSASignature: *dsa}
 	case SHA512withEDDSA:
 		val := make([]byte, len(data))
@@ -407,13 +412,43 @@ func deserializeDSA(buf []byte) (*DSASignature, error) {
 	}
 
 	length := len(buf)
-	if length&1 != 0 {
+	if length == 0 || length&1 != 0 {
 		return nil, errors.New("invalid length")
 	}
 
-	return &DSASignature{
-		R:    new(big.Int).SetBytes(buf[0 : length/2]),
-		S:    new(big.Int).SetBytes(buf[length/2:]),
-		size: length / 2,
-	}, nil
+	size := length / 2
+	// The widest component supported by any curve in this library is P-521,
+	// which needs 66 bytes. Anything wider cannot come from a valid curve.
+	if size > maxComponentSize {
+		return nil, errors.New("signature component too large")
+	}
+
+	r := new(big.Int).SetBytes(buf[0:size])
+	s := new(big.Int).SetBytes(buf[size:])
+	if r.Sign() == 0 || s.Sign() == 0 {
+		return nil, errors.New("invalid signature: zero component")
+	}
+
+	return &DSASignature{R: r, S: s, size: size}, nil
+}
+
+// maxComponentSize is the number of bytes required by the widest supported
+// curve, P-521.
+const maxComponentSize = (521 + 7) >> 3
+
+// validateDSAComponentRange checks a signature against the order and component
+// width of a known curve, enforcing 1 <= r, s < n.
+func validateDSAComponentRange(sig *DSASignature, curve elliptic.Curve) error {
+	if sig == nil || sig.R == nil || sig.S == nil {
+		return errors.New("invalid signature")
+	}
+	size := (curve.Params().BitSize + 7) >> 3
+	if sig.size != size {
+		return errors.New("invalid signature component width")
+	}
+	n := curve.Params().N
+	if sig.R.Sign() <= 0 || sig.S.Sign() <= 0 || sig.R.Cmp(n) >= 0 || sig.S.Cmp(n) >= 0 {
+		return errors.New("signature component out of range")
+	}
+	return nil
 }
