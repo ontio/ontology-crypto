@@ -407,19 +407,35 @@ func ComparePublicKey(k0, k1 PublicKey) bool {
 
 	switch v0 := k0.(type) {
 	case *ec.PublicKey:
-		v1 := k1.(*ec.PublicKey)
-		if v0.Algorithm == v1.Algorithm && v0.Params().Name == v1.Params().Name && v0.X.Cmp(v1.X) == 0 {
+		v1, ok := k1.(*ec.PublicKey)
+		if !ok || v0 == nil || v1 == nil || v0.PublicKey == nil || v1.PublicKey == nil {
+			return false
+		}
+		if v0.Curve == nil || v1.Curve == nil || v0.X == nil || v1.X == nil || v0.Y == nil || v1.Y == nil {
+			return false
+		}
+		// Two points are equal only when both coordinates match. Comparing X
+		// alone would treat (X, Y) and (X, P-Y) as the same key.
+		if v0.Algorithm == v1.Algorithm &&
+			v0.Params().Name == v1.Params().Name &&
+			v0.X.Cmp(v1.X) == 0 &&
+			v0.Y.Cmp(v1.Y) == 0 {
 			return true
 		}
 
 	case ed25519.PublicKey:
-		v1 := k1.(ed25519.PublicKey)
+		v1, ok := k1.(ed25519.PublicKey)
+		if !ok {
+			return false
+		}
 		if bytes.Compare(v0, v1) == 0 {
 			return true
 		}
 	case *ec.EthereumPublicKey:
-		right := k1.(*ec.EthereumPublicKey)
-
+		right, ok := k1.(*ec.EthereumPublicKey)
+		if !ok || v0 == nil || right == nil || v0.PublicKey == nil || right.PublicKey == nil {
+			return false
+		}
 		return v0.PublicKey.Equal(right.PublicKey)
 	}
 
