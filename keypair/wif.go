@@ -70,8 +70,11 @@ func WIF2Key(wif []byte) (PrivateKey, error) {
 	if !bytes.Equal(sum[:4], buf[pos:]) {
 		return nil, errors.New("invalid WIF data, checksum failed")
 	}
-	pri := ec.ConstructPrivateKey(buf[1:pos-1], elliptic.P256())
+	pri, err := ec.ConstructPrivateKey(buf[1:pos-1], elliptic.P256())
 	clearBytes(buf)
+	if err != nil {
+		return nil, err
+	}
 	return &ec.PrivateKey{Algorithm: ec.ECDSA, PrivateKey: pri}, nil
 }
 

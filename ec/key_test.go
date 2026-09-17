@@ -115,3 +115,31 @@ func TestDecodePublicKeyRejectsWrongLength(t *testing.T) {
 		t.Error("expected error for nil input")
 	}
 }
+
+func TestConstructPrivateKeyValidatesScalar(t *testing.T) {
+	curve := elliptic.P256()
+	n := curve.Params().N
+
+	if _, err := ConstructPrivateKey(big.NewInt(1).Bytes(), curve); err != nil {
+		t.Errorf("D=1 must be accepted: %v", err)
+	}
+	if _, err := ConstructPrivateKey(new(big.Int).Sub(n, big.NewInt(1)).Bytes(), curve); err != nil {
+		t.Errorf("D=N-1 must be accepted: %v", err)
+	}
+
+	invalid := map[string][]byte{
+		"D=0":   {},
+		"D=0b":  big.NewInt(0).Bytes(),
+		"D=N":   n.Bytes(),
+		"D=N+1": new(big.Int).Add(n, big.NewInt(1)).Bytes(),
+	}
+	for name, data := range invalid {
+		if _, err := ConstructPrivateKey(data, curve); err == nil {
+			t.Errorf("%s must be rejected", name)
+		}
+	}
+
+	if _, err := ConstructPrivateKey(big.NewInt(1).Bytes(), nil); err == nil {
+		t.Error("nil curve must be rejected")
+	}
+}

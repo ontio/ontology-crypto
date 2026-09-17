@@ -171,7 +171,11 @@ func DecryptWithCustomScrypt(prot *ProtectedKey, pwd []byte, param *ScryptParam)
 		if err != nil {
 			return nil, NewDecryptError(err.Error())
 		}
-		pri := ec.PrivateKey{PrivateKey: ec.ConstructPrivateKey(plaintext, curve)}
+		dkey, err := ec.ConstructPrivateKey(plaintext, curve)
+		if err != nil {
+			return nil, NewDecryptError(err.Error())
+		}
+		pri := ec.PrivateKey{PrivateKey: dkey}
 		if prot.Alg == "ECDSA" {
 			pri.Algorithm = ec.ECDSA
 		} else if prot.Alg == "SM2" {

@@ -71,9 +71,13 @@ func testDecrypt(prot *ProtectedKey, pass []byte) error {
 
 func TestEncryptPrivate(t *testing.T) {
 	D, _ := hex.DecodeString(d)
+	key, err := ec.ConstructPrivateKey(D, elliptic.P256())
+	if err != nil {
+		t.Fatal(err)
+	}
 	pri := &ec.PrivateKey{
 		Algorithm:  ec.ECDSA,
-		PrivateKey: ec.ConstructPrivateKey(D, elliptic.P256()),
+		PrivateKey: key,
 	}
 	var pro ProtectedKey
 	json.Unmarshal([]byte(keyjson), &pro)

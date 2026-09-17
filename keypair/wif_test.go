@@ -30,7 +30,10 @@ var wif = "KyaBriGFNXzaWf8Y7S1HxaCr1EhhFypdZYPdLJuFPqqW2d9cEtHw"
 
 func getPrivate() PrivateKey {
 	D, _ := hex.DecodeString(dhex)
-	pri := ec.ConstructPrivateKey(D, elliptic.P256())
+	pri, err := ec.ConstructPrivateKey(D, elliptic.P256())
+	if err != nil {
+		panic(err)
+	}
 	return &ec.PrivateKey{
 		Algorithm:  ec.ECDSA,
 		PrivateKey: pri,

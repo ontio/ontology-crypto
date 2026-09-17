@@ -170,9 +170,19 @@ func ValidatePoint(curve elliptic.Curve, x, y *big.Int) error {
 	return nil
 }
 
-func ConstructPrivateKey(data []byte, curve elliptic.Curve) *ecdsa.PrivateKey {
+func ConstructPrivateKey(data []byte, curve elliptic.Curve) (*ecdsa.PrivateKey, error) {
+	if curve == nil {
+		return nil, errors.New("unknown curve")
+	}
+	n := curve.Params().N
+	if n == nil || n.Sign() == 0 {
+		return nil, errors.New("invalid curve order")
+	}
 	d := new(big.Int).SetBytes(data)
-	x, y := curve.ScalarBaseMult(data)
+	if d.Sign() <= 0 || d.Cmp(n) >= 0 {
+		return nil, errors.New("invalid private key: scalar out of range")
+	}
+	x, y := curve.ScalarBaseMult(d.Bytes())
 
 	return &ecdsa.PrivateKey{
 		D: d,
@@ -181,5 +191,5 @@ func ConstructPrivateKey(data []byte, curve elliptic.Curve) *ecdsa.PrivateKey {
 			Y:     y,
 			Curve: curve,
 		},
-	}
+	}, nil
 }

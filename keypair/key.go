@@ -349,9 +349,14 @@ func DeserializePrivateKey(data []byte) (pri PrivateKey, err error) {
 			return
 		}
 
+		dkey, err2 := ec.ConstructPrivateKey(data[2:2+size], c)
+		if err2 != nil {
+			err = fmt.Errorf("deserializing private key failed: %s", err2)
+			return
+		}
 		key := &ec.PrivateKey{
 			Algorithm:  ec.ECDSA,
-			PrivateKey: ec.ConstructPrivateKey(data[2:2+size], c),
+			PrivateKey: dkey,
 		}
 
 		p, err1 := ec.DecodePublicKey(data[2+size:], c)
@@ -464,7 +469,10 @@ func GetP256KeyPairFromWIF(wif []byte) (PrivateKey, error) {
 	if !bytes.Equal(sum[:4], buf[pos:]) {
 		return nil, errors.New("invalid WIF data, checksum failed")
 	}
-	pri := ec.ConstructPrivateKey(buf[1:pos-1], elliptic.P256())
+	pri, err := ec.ConstructPrivateKey(buf[1:pos-1], elliptic.P256())
+	if err != nil {
+		return nil, err
+	}
 	return &ec.PrivateKey{Algorithm: ec.ECDSA, PrivateKey: pri}, nil
 }
 
