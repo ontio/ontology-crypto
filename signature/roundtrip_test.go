@@ -24,6 +24,7 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/ontio/ontology-crypto/ec"
 	"github.com/ontio/ontology-crypto/keypair"
 )
 
@@ -82,5 +83,41 @@ func TestSerializeDSASignatureWithoutCurveReturnsError(t *testing.T) {
 	}
 	if _, err := Serialize(sig); err == nil {
 		t.Error("expected an error instead of a panic for a signature without curve/width")
+	}
+}
+
+func TestVerifyRejectsMalformedValues(t *testing.T) {
+	_, pub, err := keypair.GenerateKeyPair(keypair.PK_ECDSA, keypair.P256)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, edPub, err := keypair.GenerateKeyPair(keypair.PK_EDDSA, keypair.ED25519)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, ethPub, err := keypair.GenerateKeyPair(keypair.PK_ETHECDSA, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	msg := []byte("message")
+
+	// Wrong dynamic types must be rejected without panicking.
+	if Verify(edPub, msg, &Signature{Scheme: SHA512withEDDSA, Value: 1234}) {
+		t.Error("ed25519: wrong value type must not verify")
+	}
+	if Verify(ethPub, msg, &Signature{Scheme: KECCAK256WithECDSA, Value: "not bytes"}) {
+		t.Error("ethereum: wrong value type must not verify")
+	}
+	if Verify(pub, msg, &Signature{Scheme: SHA256withECDSA, Value: &DSASignature{}}) {
+		t.Error("ecdsa: nil R/S must not verify")
+	}
+	if Verify(pub, msg, &Signature{Scheme: SM3withSM2, Value: []byte("nope")}) {
+		t.Error("sm2: wrong value type must not verify")
+	}
+
+	// A typed nil public key must not panic.
+	if Verify((*ec.PublicKey)(nil), msg, &Signature{Scheme: SHA256withECDSA, Value: []byte("x")}) {
+		t.Error("nil public key must not verify")
 	}
 }

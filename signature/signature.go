@@ -189,12 +189,17 @@ func Verify(pub crypto.PublicKey, msg []byte, sig *Signature) bool {
 
 	switch key := pub.(type) {
 	case *ec.PublicKey:
+		if key == nil || key.PublicKey == nil {
+			return false
+		}
 		switch sig.Scheme {
 		case SHA224withECDSA, SHA256withECDSA, SHA384withECDSA, SHA512withECDSA, SHA3_224withECDSA, SHA3_256withECDSA, SHA3_384withECDSA, SHA3_512withECDSA, RIPEMD160withECDSA:
 			h.Write(msg)
 			digest := h.Sum(nil)
 			if v, ok := sig.Value.(*DSASignature); ok {
-				res = ecdsa.Verify(key.PublicKey, digest, v.R, v.S)
+				if v.R != nil && v.S != nil {
+					res = ecdsa.Verify(key.PublicKey, digest, v.R, v.S)
+				}
 			} else if v, ok := sig.Value.([]byte); ok {
 				res = Secp256k1Verify(key, digest, v)
 			}
@@ -205,19 +210,23 @@ func Verify(pub crypto.PublicKey, msg []byte, sig *Signature) bool {
 		}
 	case ed25519.PublicKey:
 		if sig.Scheme == SHA512withEDDSA {
-			v := sig.Value.([]byte)
-			res = ed25519.Verify(key, msg, v)
+			if v, ok := sig.Value.([]byte); ok {
+				res = ed25519.Verify(key, msg, v)
+			}
 		}
 	case *ec.EthereumPublicKey:
-		if sig.Scheme != KECCAK256WithECDSA {
+		if sig.Scheme != KECCAK256WithECDSA || key == nil || key.PublicKey == nil {
+			return false
+		}
+		raw, ok := sig.Value.([]byte)
+		if !ok {
 			return false
 		}
 		kb := ethcrypto.FromECDSAPub(key.PublicKey)
-		sig := sig.Value.([]byte)
-		if len(sig) < ethcrypto.SignatureLength {
+		if len(raw) < ethcrypto.SignatureLength {
 			return false
 		}
-		sig = sig[:ethcrypto.RecoveryIDOffset] // remove recovery id
+		raw = raw[:ethcrypto.RecoveryIDOffset] // remove recovery id
 
 		if len(msg) != ethcrypto.DigestLength {
 			hasher := GetHash(KECCAK256WithECDSA)
@@ -228,11 +237,11 @@ func Verify(pub crypto.PublicKey, msg []byte, sig *Signature) bool {
 			hasher.Write(msg)
 
 			digest := hasher.Sum(nil)
-			return ethcrypto.VerifySignature(kb, digest, sig)
+			return ethcrypto.VerifySignature(kb, digest, raw)
 		}
 
 		// compatible with ethereum
-		return ethcrypto.VerifySignature(kb, msg, sig)
+		return ethcrypto.VerifySignature(kb, msg, raw)
 	}
 
 	return res
