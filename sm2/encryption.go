@@ -21,12 +21,12 @@
 package sm2
 
 import (
-	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/sha512"
+	"crypto/subtle"
 	"errors"
 	"fmt"
 	"io"
@@ -236,7 +236,9 @@ func Decrypt(priv *ecdsa.PrivateKey, encryptData []byte) ([]byte, error) {
 	copy(tmp[len(tmp)-32:], y2.Bytes())
 	c3 := sm3.Sum(tmp)
 
-	if 0 != bytes.Compare(c3[:], encryptData[64:96]) {
+	// Use a constant-time comparison so the position of the first mismatching
+	// byte is not observable through timing.
+	if subtle.ConstantTimeCompare(c3[:], encryptData[64:96]) != 1 {
 		// Authentication failed: never return plaintext derived from an
 		// unauthenticated ciphertext, otherwise a caller that logs or caches
 		// the first return value would process attacker-controlled data.
