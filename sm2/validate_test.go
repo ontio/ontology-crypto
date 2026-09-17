@@ -48,6 +48,21 @@ func TestEncryptRejectsEmptyMessage(t *testing.T) {
 	}
 }
 
+func TestDecryptRejectsShortCiphertext(t *testing.T) {
+	priv, err := ecdsa.GenerateKey(SM2P256V1(), rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, n := range []int{0, 1, 31, 32, 63, 64, 95} {
+		if _, err := Decrypt(priv, make([]byte, n)); err == nil {
+			t.Errorf("expected error for %d-byte ciphertext", n)
+		}
+	}
+	if _, err := Decrypt(nil, make([]byte, 96)); err == nil {
+		t.Error("expected error for nil private key")
+	}
+}
+
 func TestDecryptTamperedCiphertextReturnsNoPlaintext(t *testing.T) {
 	priv, err := ecdsa.GenerateKey(SM2P256V1(), rand.Reader)
 	if err != nil {

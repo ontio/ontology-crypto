@@ -71,6 +71,9 @@ func PKCS5Padding(src []byte, blockSize int) []byte {
 }
 
 func PKCS5UnPadding(src []byte) ([]byte, error) {
+	if len(src) == 0 {
+		return nil, errors.New("unpadding error: empty input")
+	}
 	length := len(src)
 	unpadding := int(src[length-1])
 	if unpadding > length {

@@ -188,11 +188,20 @@ func Encrypt(pub *ecdsa.PublicKey, data []byte) ([]byte, error) {
 }
 
 func Decrypt(priv *ecdsa.PrivateKey, encryptData []byte) ([]byte, error) {
+	if priv == nil {
+		return nil, errors.New("nil private key")
+	}
 	var c SM2Curve
 	if t, ok := priv.Curve.(SM2Curve); !ok {
 		return nil, errors.New("the curve type is not SM2Curve")
 	} else {
 		c = t
+	}
+
+	// C1 (64 bytes) + C3 (32 bytes) at minimum; anything shorter would make
+	// the slices below panic on untrusted input.
+	if len(encryptData) < 96 {
+		return nil, errors.New("sm2: ciphertext too short")
 	}
 
 	x1 := new(big.Int).SetBytes(encryptData[:32])

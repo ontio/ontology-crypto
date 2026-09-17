@@ -332,6 +332,10 @@ func SerializePrivateKey(pri PrivateKey) []byte {
 
 // DeserializePrivateKey parses the input byte array into private key.
 func DeserializePrivateKey(data []byte) (pri PrivateKey, err error) {
+	if len(data) < 2 {
+		err = errors.New("deserializing private key failed: input too short")
+		return
+	}
 	switch KeyType(data[0]) {
 	case PK_ECDSA, PK_SM2:
 		c, err1 := GetCurve(data[1])
@@ -387,6 +391,9 @@ func DeserializePrivateKey(data []byte) (pri PrivateKey, err error) {
 		w := &ec.EthereumPrivateKey{epri}
 		return w, nil
 
+	default:
+		err = errors.New("deserializing private key failed: unrecognized algorithm label")
+		return
 	}
 
 	return
@@ -433,6 +440,9 @@ func GetP256KeyPairFromWIF(wif []byte) (PrivateKey, error) {
 	buf = bi.Bytes()
 	defer clearBytes(buf)
 	pos := len(buf) - 4
+	if pos != 34 {
+		return nil, errors.New("parse WIF error, invalid data length")
+	}
 	sum := sha256.Sum256(buf[:pos])
 	sum = sha256.Sum256(sum[:])
 	if !bytes.Equal(sum[:4], buf[pos:]) {
