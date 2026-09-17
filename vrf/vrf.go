@@ -16,7 +16,7 @@
  * along with The ontology.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-//This package is a wrapper of verifiable random function using curve secp256r1.
+// This package is a wrapper of verifiable random function using curve secp256r1.
 package vrf
 
 import (
@@ -36,7 +36,7 @@ var (
 	ErrEvalVRF         = errors.New("failed to evaluate vrf")
 )
 
-//Vrf returns the verifiable random function evaluated m and a NIZK proof
+// Vrf returns the verifiable random function evaluated m and a NIZK proof
 func Vrf(pri keypair.PrivateKey, msg []byte) (vrf, nizk []byte, err error) {
 	isValid := ValidatePrivateKey(pri)
 	if !isValid {
@@ -56,7 +56,7 @@ func Vrf(pri keypair.PrivateKey, msg []byte) (vrf, nizk []byte, err error) {
 	return
 }
 
-//Verify returns true if vrf and nizk is correct for msg
+// Verify returns true if vrf and nizk is correct for msg
 func Verify(pub keypair.PublicKey, msg, vrf, nizk []byte) (bool, error) {
 	isValid := ValidatePublicKey(pub)
 	if !isValid {
@@ -84,6 +84,9 @@ func Verify(pub keypair.PublicKey, msg, vrf, nizk []byte) (bool, error) {
 func ValidatePrivateKey(pri keypair.PrivateKey) bool {
 	switch t := pri.(type) {
 	case *ec.PrivateKey:
+		if t == nil || t.PrivateKey == nil || t.Curve == nil {
+			return false
+		}
 		h := getHash(t.Curve)
 		if h == nil {
 			return false
@@ -102,8 +105,16 @@ func ValidatePrivateKey(pri keypair.PrivateKey) bool {
 func ValidatePublicKey(pub keypair.PublicKey) bool {
 	switch t := pub.(type) {
 	case *ec.PublicKey:
+		if t == nil || t.PublicKey == nil || t.Curve == nil {
+			return false
+		}
 		h := getHash(t.Curve)
 		if h == nil {
+			return false
+		}
+		// Reject keys that are not valid points on the curve, e.g. ones built
+		// directly by a caller instead of going through deserialization.
+		if err := ec.ValidatePoint(t.Curve, t.X, t.Y); err != nil {
 			return false
 		}
 		return true

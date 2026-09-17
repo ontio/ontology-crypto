@@ -30,6 +30,8 @@ import (
 	"hash"
 	"io"
 	"math/big"
+
+	"github.com/ontio/ontology-crypto/ec"
 )
 
 type zr struct {
@@ -205,8 +207,14 @@ func Sign(rand io.Reader, priv *ecdsa.PrivateKey, id string, msg []byte, hasher 
 
 // Verify checks whether the input (r, s) is a valid signature for the message.
 func Verify(pub *ecdsa.PublicKey, id string, msg []byte, hasher hash.Hash, r, s *big.Int) bool {
+	if pub == nil || pub.Curve == nil || hasher == nil || r == nil || s == nil {
+		return false
+	}
 	N := pub.Params().N
 	if N.Sign() == 0 {
+		return false
+	}
+	if err := ec.ValidatePoint(pub.Curve, pub.X, pub.Y); err != nil {
 		return false
 	}
 	if r.Sign() <= 0 || r.Cmp(N) >= 0 || s.Sign() <= 0 || s.Cmp(N) >= 0 {

@@ -32,6 +32,7 @@ import (
 	"io"
 	"math/big"
 
+	"github.com/ontio/ontology-crypto/ec"
 	"github.com/ontio/ontology-crypto/sm3"
 )
 
@@ -83,11 +84,19 @@ func sm3kdf(zInput []byte, kLen int) ([]byte, int) {
 }
 
 func Encrypt(pub *ecdsa.PublicKey, data []byte) ([]byte, error) {
+	if pub == nil {
+		return nil, errors.New("nil public key")
+	}
 	var c SM2Curve
 	if t, ok := pub.Curve.(SM2Curve); !ok {
 		return nil, errors.New("the curve type is not SM2Curve")
 	} else {
 		c = t
+	}
+	// Never trust the caller to have gone through DecodePublicKey: verify the
+	// key is a valid point on the curve before using it.
+	if err := ec.ValidatePoint(c, pub.X, pub.Y); err != nil {
+		return nil, err
 	}
 
 	encryptData := make([]byte, 96+len(data))
@@ -137,9 +146,6 @@ func Encrypt(pub *ecdsa.PublicKey, data []byte) ([]byte, error) {
 		copy(encryptData[32-len(x1.Bytes()):], x1.Bytes())
 		copy(encryptData[64-len(y1.Bytes()):], y1.Bytes())
 
-		if pub.X.Sign() == 0 && pub.Y.Sign() == 0 {
-			return nil, errors.New("invalid public key")
-		}
 		x2, y2 = c.ScalarMult(pub.X, pub.Y, k.Bytes())
 		x2y2 := make([]byte, 64)
 		copy(x2y2[32-len(x2.Bytes()):], x2.Bytes())
