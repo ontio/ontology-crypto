@@ -98,7 +98,6 @@ func (this publicKeyList) Less(i, j int) bool {
 	default:
 		panic("error key type")
 	}
-	return true
 }
 
 func (this publicKeyList) Swap(i, j int) {

@@ -31,7 +31,7 @@ var initonce sync.Once
 type SM2Curve interface {
 	elliptic.Curve
 
-	// ABytes returns the little endian byte sequence of parameter A.
+	// ABytes returns the big endian byte sequence of parameter A.
 	ABytes() []byte
 }
 

@@ -42,7 +42,7 @@ import (
 func AesEncrypt(plaintext []byte, key []byte, iv []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		return nil, errors.New("invalid decrypt key")
+		return nil, errors.New("invalid key")
 	}
 	blockSize := block.BlockSize()
 	if len(iv) != blockSize {
@@ -64,7 +64,7 @@ func AesEncrypt(plaintext []byte, key []byte, iv []byte) ([]byte, error) {
 func AesDecrypt(ciphertext []byte, key []byte, iv []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		return nil, errors.New("invalid decrypt key")
+		return nil, errors.New("invalid key")
 	}
 
 	blockSize := block.BlockSize()

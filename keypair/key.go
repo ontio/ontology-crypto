@@ -111,8 +111,8 @@ func GenerateKeyPair(t KeyType, opts interface{}) (PrivateKey, PublicKey, error)
 		if err != nil {
 			return nil, nil, err
 		}
-		priWrapper := &ec.EthereumPrivateKey{privateKeyECDSA}
-		pubWrapper := &ec.EthereumPublicKey{&privateKeyECDSA.PublicKey}
+		priWrapper := &ec.EthereumPrivateKey{PrivateKey: privateKeyECDSA}
+		pubWrapper := &ec.EthereumPublicKey{PublicKey: &privateKeyECDSA.PublicKey}
 		return priWrapper, pubWrapper, nil
 
 	default:
@@ -263,7 +263,7 @@ func DeserializePublicKey(data []byte) (PublicKey, error) {
 		if err != nil {
 			return nil, err
 		}
-		w := &ec.EthereumPublicKey{epub}
+		w := &ec.EthereumPublicKey{PublicKey: epub}
 		return w, nil
 
 	default:
@@ -284,7 +284,7 @@ func DeserializePublicKey(data []byte) (PublicKey, error) {
 //           |----------------|---------|--------------------|
 //           | curve (1 byte) | d_bytes | encoded_public_key |
 //           |----------------|---------|--------------------|
-//   d_bytes is the byte sequence converted from the integer d in little
+//   d_bytes is the byte sequence converted from the integer d in big
 //   endian, with the byte length specified by the curve.
 //   encoded_public_key is the public key data encoded in comopression mode.
 //
@@ -395,7 +395,7 @@ func DeserializePrivateKey(data []byte) (pri PrivateKey, err error) {
 		if err != nil {
 			return nil, err
 		}
-		w := &ec.EthereumPrivateKey{epri}
+		w := &ec.EthereumPrivateKey{PrivateKey: epri}
 		return w, nil
 
 	default:
@@ -480,8 +480,8 @@ func GetP256KeyPairFromWIF(wif []byte) (PrivateKey, error) {
 
 // FromEthereumPrivateKey convert Ethereum PrivateKey to ontology keypair
 func FromEthereumPrivateKey(key *ecdsa.PrivateKey) (PrivateKey, PublicKey) {
-	priWrapper := &ec.EthereumPrivateKey{key}
-	pubWrapper := &ec.EthereumPublicKey{&key.PublicKey}
+	priWrapper := &ec.EthereumPrivateKey{PrivateKey: key}
+	pubWrapper := &ec.EthereumPublicKey{PublicKey: &key.PublicKey}
 
 	return priWrapper, pubWrapper
 }

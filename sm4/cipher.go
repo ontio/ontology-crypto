@@ -17,7 +17,7 @@
  */
 
 /*
- * Package sm4 implements the Chinese SM4 Digest Algorithm,
+ * Package sm4 implements the Chinese SM4 Block Cipher Algorithm,
  * according to "go/src/crypto/aes"
  * author: weizhang <d5c5ceb0@gmail.com>
  * 2017.02.24

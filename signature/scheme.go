@@ -33,7 +33,6 @@ import (
 
 	_ "golang.org/x/crypto/ripemd160"
 	"golang.org/x/crypto/sha3"
-	_ "golang.org/x/crypto/sha3"
 )
 
 type SignatureScheme byte
