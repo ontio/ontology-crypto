@@ -1,8 +1,0 @@
-package: github.com/ontio/ontology-crypto
-import:
-  - package: golang.org/x/crypto
-    repo: https://github.com/golang/crypto.git
-    subpackages:
-      - ed25519
-  - package: github.com/btcsuite/btcd
-    version: v0.20.1-beta
