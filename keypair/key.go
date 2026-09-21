@@ -20,10 +20,10 @@
 // functions.
 //
 // Multiple types of key pair supported:
-//     ECDSA
-//     SM2
-//     EdDSA
 //
+//	ECDSA
+//	SM2
+//	EdDSA
 package keypair
 
 import (
@@ -73,9 +73,10 @@ const err_generate = "key pair generation failed, "
 
 // GenerateKeyPair generates a pair of private and public keys in type t.
 // opts is the necessary parameter(s), which is defined by the key type:
-//     ECDSA: a byte specifies the elliptic curve, which defined in package ec
-//     SM2:   same as ECDSA
-//     EdDSA: a byte specifies the curve, only ED25519 supported currently.
+//
+//	ECDSA: a byte specifies the elliptic curve, which defined in package ec
+//	SM2:   same as ECDSA
+//	EdDSA: a byte specifies the curve, only ED25519 supported currently.
 func GenerateKeyPair(t KeyType, opts interface{}) (PrivateKey, PublicKey, error) {
 	switch t {
 	case PK_ECDSA, PK_SM2:
@@ -152,22 +153,23 @@ func GetEthereumPubKey(p PublicKey) (*ec.EthereumPublicKey, error) {
 
 // SerializePublicKey serializes the public key to a byte sequence as the
 // following format:
-//         |--------------------|-----------------|
-//         | algorithm (1 byte) | public_key_data |
-//         |--------------------|-----------------|
+//
+//	|--------------------|-----------------|
+//	| algorithm (1 byte) | public_key_data |
+//	|--------------------|-----------------|
 //
 // public_key_data differs in the algorithm:
 //
-// - ECDSA & SM2
-//         |----------------|--------------------|
-//         | curve (1 byte) | encoded_public_key |
-//         |----------------|--------------------|
-//   encoded_public_key is the public key encoded in compression mode.
+//   - ECDSA & SM2
+//     |----------------|--------------------|
+//     | curve (1 byte) | encoded_public_key |
+//     |----------------|--------------------|
+//     encoded_public_key is the public key encoded in compression mode.
 //
-// - EdDSA
-//   Since only Ed25519 supported currently, it is just the 1 byte curve label
-//   followed by the byte sequence which could be handled as public key in
-//   package ed25519.
+//   - EdDSA
+//     Since only Ed25519 supported currently, it is just the 1 byte curve label
+//     followed by the byte sequence which could be handled as public key in
+//     package ed25519.
 //
 // ECDSA public key with NIST P-256 curve is treated as a special case, which
 // just use the encoded data as the serialization and starts with 0x02 or 0x03,
@@ -274,24 +276,25 @@ func DeserializePublicKey(data []byte) (PublicKey, error) {
 
 // SerializePrivateKey serializes the input private key into byte array as the
 // following format:
-//              |--------------------|------------------|
-//              | algorithm (1 byte) | private_key_data |
-//              |--------------------|------------------|
+//
+//	|--------------------|------------------|
+//	| algorithm (1 byte) | private_key_data |
+//	|--------------------|------------------|
 //
 // The private_key_data differs in algorithm:
 //
-// - ECDSA & SM2
-//           |----------------|---------|--------------------|
-//           | curve (1 byte) | d_bytes | encoded_public_key |
-//           |----------------|---------|--------------------|
-//   d_bytes is the byte sequence converted from the integer d in big
-//   endian, with the byte length specified by the curve.
-//   encoded_public_key is the public key data encoded in comopression mode.
+//   - ECDSA & SM2
+//     |----------------|---------|--------------------|
+//     | curve (1 byte) | d_bytes | encoded_public_key |
+//     |----------------|---------|--------------------|
+//     d_bytes is the byte sequence converted from the integer d in big
+//     endian, with the byte length specified by the curve.
+//     encoded_public_key is the public key data encoded in comopression mode.
 //
-// - EdDSA
-//   Since only Ed25519 supported currently, it is just the 1 byte Ed25519
-//   curve label followed by the byte sequence which could be handled as
-//   private key in package ed25519.
+//   - EdDSA
+//     Since only Ed25519 supported currently, it is just the 1 byte Ed25519
+//     curve label followed by the byte sequence which could be handled as
+//     private key in package ed25519.
 //
 // This function will panic if error occurs.
 func SerializePrivateKey(pri PrivateKey) []byte {

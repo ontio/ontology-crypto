@@ -135,3 +135,14 @@ func TestAesRejectsBadParameters(t *testing.T) {
 		t.Error("expected error for a non block-sized ciphertext")
 	}
 }
+
+// FuzzPKCS5UnPadding asserts that unpadding never panics for arbitrary input
+// and block sizes.
+func FuzzPKCS5UnPadding(f *testing.F) {
+	f.Add([]byte{0x01}, 16)
+	f.Add([]byte{}, 0)
+	f.Add([]byte{0x10}, -1)
+	f.Fuzz(func(t *testing.T, src []byte, blockSize int) {
+		PKCS5UnPadding(src, blockSize)
+	})
+}

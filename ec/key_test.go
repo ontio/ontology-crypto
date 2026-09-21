@@ -188,3 +188,15 @@ func TestDecodePublicKeyRejectsUnknownEncodingMode(t *testing.T) {
 		t.Error("expected error for unknown encoding mode")
 	}
 }
+
+// FuzzDecodePublicKey asserts that public key decoding never panics for
+// arbitrary input on either a 256-bit or a 521-bit curve.
+func FuzzDecodePublicKey(f *testing.F) {
+	f.Add([]byte{0x04, 0x01})
+	f.Add([]byte{0x03})
+	f.Add([]byte{0x05})
+	f.Fuzz(func(t *testing.T, data []byte) {
+		DecodePublicKey(data, elliptic.P256())
+		DecodePublicKey(data, elliptic.P521())
+	})
+}

@@ -29,14 +29,14 @@ import (
 
 // SorPublicKeys sorts the input PublicKey slice and return it.
 // The sorting rules is as follows:
-//    1. if keys have different types, then sorted by the KeyType value.
-//    2. else,
-//       2.1. ECDSA or SM2:
-//           2.1.1. if on different curves, then sorted by the curve label.
-//           2.1.2. else if x values are different, then sorted by x.
-//           2.1.3. else sorted by y.
-//       2.2. EdDSA: sorted by the byte sequence directly.
-//       2.3. ETHECDSA: sort just by (x, y), same as 2.1
+//  1. if keys have different types, then sorted by the KeyType value.
+//  2. else,
+//     2.1. ECDSA or SM2:
+//     2.1.1. if on different curves, then sorted by the curve label.
+//     2.1.2. else if x values are different, then sorted by x.
+//     2.1.3. else sorted by y.
+//     2.2. EdDSA: sorted by the byte sequence directly.
+//     2.3. ETHECDSA: sort just by (x, y), same as 2.1
 func SortPublicKeys(list []PublicKey) []PublicKey {
 	pl := publicKeyList(list)
 	sort.Sort(pl)

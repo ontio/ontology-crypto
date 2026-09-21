@@ -405,7 +405,7 @@ func serializeDSA(sig *DSASignature) ([]byte, error) {
 	copy(res[size*2-len(s):], s)
 	return res, nil
 }
- 
+
 func deserializeDSA(buf []byte) (*DSASignature, error) {
 	if buf == nil {
 		return nil, errors.New("invalid signature data")

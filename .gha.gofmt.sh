@@ -1,16 +1,20 @@
 #!/bin/bash
+#
+# Fail if any tracked Go file is not formatted/import-clean.
+set -euo pipefail
 
-which goimports || go install -v golang.org/x/tools/cmd/goimports
+if ! command -v goimports >/dev/null 2>&1; then
+    go install golang.org/x/tools/cmd/goimports@latest
+fi
+export PATH="$(go env GOPATH)/bin:${PATH}"
 
-unset dirs files
-dirs=$(go list -f {{.Dir}} ./... | grep -v /vendor/)
-
-for d in $dirs
-do
-    for f in $d/*.go
-    do
-    files="${files} $f"
+files=""
+for d in $(go list -f '{{.Dir}}' ./... | grep -v /vendor/); do
+    for f in "$d"/*.go; do
+        if [ -e "$f" ]; then
+            files="${files} ${f}"
+        fi
     done
 done
 
-diff <(goimports -d $files) <(echo -n)
+diff <(goimports -d ${files}) <(echo -n)

@@ -1,10 +1,7 @@
 #!/bin/bash
-# code from https://github.com/Seklfreak/Robyul2
-unset dirs files
-dirs=$(go list ./... | grep -v vendor/ | grep -v ontology-crypto$)
-set -x -e
+#
+# Run the unit tests for every package. Stress-scale vectors are opt-in via
+# -stress (see the stress CI job).
+set -euo pipefail
 
-for d in $dirs
-do
-  go test -v $d
-done
+go test ./...

@@ -46,6 +46,19 @@ func TestSignRejectsOverlongUserID(t *testing.T) {
 	}
 }
 
+// FuzzDecrypt asserts that decrypting arbitrary bytes never panics.
+func FuzzDecrypt(f *testing.F) {
+	priv, err := ecdsa.GenerateKey(SM2P256V1(), rand.Reader)
+	if err != nil {
+		f.Fatal(err)
+	}
+	f.Add(make([]byte, 96))
+	f.Add(make([]byte, 64))
+	f.Fuzz(func(t *testing.T, data []byte) {
+		Decrypt(priv, data)
+	})
+}
+
 func TestEncryptRejectsEmptyMessage(t *testing.T) {
 	priv, err := ecdsa.GenerateKey(SM2P256V1(), rand.Reader)
 	if err != nil {

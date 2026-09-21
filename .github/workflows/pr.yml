@@ -1,24 +1,75 @@
+name: CI
+
 on:
   pull_request:
-    branches:
-
   push:
-    branches:
 
 jobs:
-
-  build:
-    runs-on: ubuntu-18.04
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Cover the current release and the previous one instead of a long
+        # dead version. Bump the lower bound together with go.mod.
+        go: [oldstable, stable]
     steps:
-    - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
-    - name: Set up Go
-      uses: actions/setup-go@v2
-      with:
-        go-version: 1.15
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go }}
 
-    - name: command
-      run: bash ./.gha.gofmt.sh
+      - name: Check formatting
+        run: bash ./.gha.gofmt.sh
 
-    - name: command
-      run: bash ./.gha.gotest.sh
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test
+        run: bash ./.gha.gotest.sh
+
+  fuzz:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: Fuzz smoke test
+        run: |
+          go test ./ec/ -run '^$' -fuzz FuzzDecodePublicKey -fuzztime 10s
+          go test ./keypair/ -run '^$' -fuzz FuzzDeserializePrivateKey -fuzztime 10s
+          go test ./aes/ -run '^$' -fuzz FuzzPKCS5UnPadding -fuzztime 10s
+          go test ./sm2/ -run '^$' -fuzz FuzzDecrypt -fuzztime 10s
+
+  stress:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: SM4 one-million-round vector
+        run: go test ./sm4/ -run TestCipherMillionRounds -stress
+
+  cross-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: Cross-compile for linux/arm64
+        run: GOOS=linux GOARCH=arm64 go build ./...

@@ -126,3 +126,23 @@ func TestDeserializeEd25519PrivateKeyIsCopied(t *testing.T) {
 		t.Errorf("unexpected key size %d", len(key))
 	}
 }
+
+// FuzzDeserializePublicKey asserts the parser never panics on arbitrary input.
+func FuzzDeserializePublicKey(f *testing.F) {
+	f.Add([]byte{byte(PK_P256_E), 0x01, 0x02})
+	f.Add([]byte{byte(PK_EDDSA), ED25519})
+	f.Add([]byte{byte(PK_ETHECDSA), 0x01, 0x02})
+	f.Fuzz(func(t *testing.T, data []byte) {
+		DeserializePublicKey(data)
+	})
+}
+
+// FuzzDeserializePrivateKey asserts the parser never panics on arbitrary input.
+func FuzzDeserializePrivateKey(f *testing.F) {
+	f.Add([]byte{byte(PK_ECDSA), P256})
+	f.Add([]byte{byte(PK_EDDSA), ED25519})
+	f.Add([]byte{0xff, 0xff, 0xff})
+	f.Fuzz(func(t *testing.T, data []byte) {
+		DeserializePrivateKey(data)
+	})
+}
