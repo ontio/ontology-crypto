@@ -82,3 +82,56 @@ func TestCBCRejectsWrongIVLength(t *testing.T) {
 		}
 	}
 }
+
+func TestAesRoundTrip(t *testing.T) {
+	key := bytes.Repeat([]byte{0x01}, 16)
+	iv := bytes.Repeat([]byte{0x02}, 16)
+
+	messages := [][]byte{
+		nil,
+		{},
+		[]byte("a"),
+		[]byte("exactly 16 bytes"),
+		bytes.Repeat([]byte("y"), 17),
+		bytes.Repeat([]byte("z"), 4096),
+	}
+	for i, msg := range messages {
+		ct, err := AesEncrypt(msg, key, iv)
+		if err != nil {
+			t.Fatalf("case %d: encrypt: %v", i, err)
+		}
+		if len(ct) == 0 || len(ct)%16 != 0 {
+			t.Fatalf("case %d: unexpected ciphertext length %d", i, len(ct))
+		}
+		pt, err := AesDecrypt(ct, key, iv)
+		if err != nil {
+			t.Fatalf("case %d: decrypt: %v", i, err)
+		}
+		if !bytes.Equal(pt, msg) {
+			t.Errorf("case %d: round trip mismatch: got %x want %x", i, pt, msg)
+		}
+	}
+}
+
+func TestAesRejectsBadParameters(t *testing.T) {
+	key := make([]byte, 16)
+	iv := make([]byte, 16)
+
+	// Invalid key length.
+	if _, err := AesEncrypt([]byte("x"), make([]byte, 15), iv); err == nil {
+		t.Error("expected error for a 15-byte key")
+	}
+	if _, err := AesDecrypt(make([]byte, 16), make([]byte, 15), iv); err == nil {
+		t.Error("expected error for a 15-byte key")
+	}
+
+	// Ciphertext shorter than one block.
+	if _, err := AesDecrypt(make([]byte, 8), key, iv); err == nil {
+		t.Error("expected error for a short ciphertext")
+	}
+
+	// Ciphertext not a multiple of the block size.
+	if _, err := AesDecrypt(make([]byte, 20), key, iv); err == nil {
+		t.Error("expected error for a non block-sized ciphertext")
+	}
+}

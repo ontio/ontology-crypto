@@ -19,8 +19,11 @@
 package ec
 
 import (
+	"bytes"
+	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"encoding/hex"
 	"math/big"
 	"testing"
 )
@@ -141,5 +144,47 @@ func TestConstructPrivateKeyValidatesScalar(t *testing.T) {
 
 	if _, err := ConstructPrivateKey(big.NewInt(1).Bytes(), nil); err == nil {
 		t.Error("nil curve must be rejected")
+	}
+}
+
+// TestEncodePublicKeyStandardVector checks the SEC1 encoding of the P-256
+// generator point against its well-known hex representation.
+func TestEncodePublicKeyStandardVector(t *testing.T) {
+	curve := elliptic.P256()
+	params := curve.Params()
+	const gx = "6b17d1f2e12c4247f8bce6e563a440f277037d812deb33a0f4a13945d898c296"
+	const gy = "4fe342e2fe1a7f9b8ee7eb4a7c0f9e162bce33576b315ececbb6406837bf51f5"
+
+	pub := &ecdsa.PublicKey{X: params.Gx, Y: params.Gy, Curve: curve}
+
+	wantUncompressed, _ := hex.DecodeString("04" + gx + gy)
+	if got := EncodePublicKey(pub, false); !bytes.Equal(got, wantUncompressed) {
+		t.Errorf("uncompressed encoding mismatch:\n got=%x\nwant=%x", got, wantUncompressed)
+	}
+
+	// Gy is odd, so the compressed prefix must be 0x03.
+	wantCompressed, _ := hex.DecodeString("03" + gx)
+	if got := EncodePublicKey(pub, true); !bytes.Equal(got, wantCompressed) {
+		t.Errorf("compressed encoding mismatch:\n got=%x\nwant=%x", got, wantCompressed)
+	}
+
+	for _, data := range [][]byte{wantUncompressed, wantCompressed} {
+		decoded, err := DecodePublicKey(data, curve)
+		if err != nil {
+			t.Fatalf("decode %x: %v", data[0], err)
+		}
+		if decoded.X.Cmp(params.Gx) != 0 || decoded.Y.Cmp(params.Gy) != 0 {
+			t.Errorf("decoded generator mismatch for prefix %x", data[0])
+		}
+	}
+}
+
+func TestDecodePublicKeyRejectsUnknownEncodingMode(t *testing.T) {
+	curve := elliptic.P256()
+	length := (curve.Params().BitSize + 7) >> 3
+	bad := make([]byte, length*2+1)
+	bad[0] = 0x05
+	if _, err := DecodePublicKey(bad, curve); err == nil {
+		t.Error("expected error for unknown encoding mode")
 	}
 }
