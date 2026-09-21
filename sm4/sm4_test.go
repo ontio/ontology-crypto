@@ -26,8 +26,15 @@
 package sm4
 
 import (
+	"flag"
 	"testing"
 )
+
+// stressTests enables the multi-million round vectors that are too slow for
+// the ordinary test suite. Run them explicitly, e.g. as a nightly/stress job:
+//
+//	go test ./sm4/ -run TestCipherMillionRounds -stress
+var stressTests = flag.Bool("stress", false, "run stress-scale tests")
 
 type CryptTest struct {
 	key  []byte
@@ -62,15 +69,12 @@ func TestCipherEncrypt(t *testing.T) {
 			}
 		}
 
-		out2 := make([]byte, len(tt.in))
-		copy(out, tt.in)
-		for i := 0; i < 1000000/2; i++ {
-			c.Encrypt(out2, out)
-			c.Encrypt(out, out2)
-		}
-		for j, v := range out {
-			if v != tt.out2[j] {
-				t.Errorf("Cipher.Encrypt %d: out[%d] = %#x, want %#x", i, j, v, tt.out[j])
+		// A short round trip must return the original plaintext.
+		back := make([]byte, len(tt.in))
+		c.Decrypt(back, out)
+		for j, v := range back {
+			if v != tt.in[j] {
+				t.Errorf("Cipher round trip %d: plain[%d] = %#x, want %#x", i, j, v, tt.in[j])
 				break
 			}
 		}
@@ -93,16 +97,47 @@ func TestCipherDecrypt(t *testing.T) {
 			}
 		}
 
-		plain2 := make([]byte, len(tt.in))
+	}
+}
 
-		copy(plain, tt.out2)
-		for i := 0; i < 1000000/2; i++ {
-			c.Decrypt(plain2, plain)
-			c.Decrypt(plain, plain2)
+// TestCipherMillionRounds verifies the GB/T 32907 vector that requires one
+// million consecutive encryptions and then one million decryptions back to the
+// original plaintext. It is skipped unless -stress is given.
+func TestCipherMillionRounds(t *testing.T) {
+	if !*stressTests {
+		t.Skip("skipping stress test; run with -stress")
+	}
+
+	for i, tt := range encryptTests {
+		c, err := NewCipher(tt.key)
+		if err != nil {
+			t.Fatalf("NewCipher(%d bytes) = %s", len(tt.key), err)
 		}
-		for j, v := range plain {
+
+		out := make([]byte, len(tt.in))
+		copy(out, tt.in)
+		next := make([]byte, len(tt.in))
+		for n := 0; n < 1000000/2; n++ {
+			c.Encrypt(next, out)
+			c.Encrypt(out, next)
+		}
+		for j, v := range out {
+			if v != tt.out2[j] {
+				t.Errorf("Cipher.Encrypt %d million rounds: out[%d] = %#x, want %#x", i, j, v, tt.out2[j])
+				break
+			}
+		}
+
+		back := make([]byte, len(tt.in))
+		copy(back, out)
+		prev := make([]byte, len(tt.in))
+		for n := 0; n < 1000000/2; n++ {
+			c.Decrypt(prev, back)
+			c.Decrypt(back, prev)
+		}
+		for j, v := range back {
 			if v != tt.in[j] {
-				t.Errorf("decryptBlock %d: plain[%d] = %#x, want %#x", i, j, v, tt.in[j])
+				t.Errorf("Cipher.Decrypt %d million rounds: plain[%d] = %#x, want %#x", i, j, v, tt.in[j])
 				break
 			}
 		}

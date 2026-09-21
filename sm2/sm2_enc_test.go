@@ -104,28 +104,46 @@ func TestSm2Dec(t *testing.T) {
 
 func TestSm2Enc(t *testing.T) {
 	p256 := SM2P256V1()
-	for j := 0; j < 1000; j++ {
-		for i := 1; i < 512; i++ {
-			fmt.Println("round ", j, i)
-			priKey, _ := ecdsa.GenerateKey(p256, rand.Reader)
-			pubKey := &priKey.PublicKey
-			msg := make([]byte, i)
-			_, _ = io.ReadFull(rand.Reader, msg[:])
+	// A few deterministic boundary sizes instead of the previous ~511,000
+	// round trips. The heavy load lives in the benchmarks below.
+	sizes := []int{1, 2, 15, 16, 31, 32, 33, 63, 64, 65, 127, 128, 255, 256, 511}
+	for _, size := range sizes {
+		priKey, err := ecdsa.GenerateKey(p256, rand.Reader)
+		if err != nil {
+			t.Fatal(err)
+		}
+		msg := make([]byte, size)
+		if _, err := io.ReadFull(rand.Reader, msg); err != nil {
+			t.Fatal(err)
+		}
 
-			c, err := Encrypt(pubKey, msg)
-			if err != nil {
-				fmt.Println(err)
-				t.Error("sm2 enc error!")
-			}
-			m, err := Decrypt(priKey, c)
-			if err != nil {
-				fmt.Println(err)
-				t.Error("sm2 enc error!")
-			}
+		c, err := Encrypt(&priKey.PublicKey, msg)
+		if err != nil {
+			t.Fatalf("size %d: sm2 enc error: %v", size, err)
+		}
+		m, err := Decrypt(priKey, c)
+		if err != nil {
+			t.Fatalf("size %d: sm2 dec error: %v", size, err)
+		}
+		if !reflect.DeepEqual(msg, m) {
+			t.Errorf("size %d: sm2 round trip mismatch", size)
+		}
+	}
+}
 
-			if reflect.DeepEqual(msg, m) != true {
-				t.Error("sm2 enc error!")
-			}
+func BenchmarkSm2EncDecrypt(b *testing.B) {
+	priKey, _ := ecdsa.GenerateKey(SM2P256V1(), rand.Reader)
+	pubKey := &priKey.PublicKey
+	msg := make([]byte, 256)
+	_, _ = io.ReadFull(rand.Reader, msg)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		c, err := Encrypt(pubKey, msg)
+		if err != nil {
+			b.Fatal(err)
+		}
+		if _, err := Decrypt(priKey, c); err != nil {
+			b.Fatal(err)
 		}
 	}
 }

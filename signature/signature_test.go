@@ -329,7 +329,8 @@ func TestP256(t *testing.T) {
 	msg := []byte{1, 2, 3}
 	t.Log("message:", hex.EncodeToString(msg))
 
-	for i := 0; i < 100000; i++ {
+	// A handful of round trips; the heavy load belongs in the benchmarks.
+	for i := 0; i < 8; i++ {
 		sig, err := Sign(SHA256withECDSA, pri, msg, nil)
 		if err != nil {
 			t.Fatal(err)
