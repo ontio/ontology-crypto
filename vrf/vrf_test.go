@@ -61,12 +61,12 @@ func testInvalidKey(t *testing.T, kt keypair.KeyType, curve byte) {
 
 	isValid := ValidatePrivateKey(pri)
 	if isValid {
-		t.Fatal("should return false")
+		t.Fatalf("key type %v curve %v: private key should be invalid", kt, curve)
 	}
 
 	isValid = ValidatePublicKey(pub)
 	if isValid {
-		t.Fatal("should return false")
+		t.Fatalf("key type %v curve %v: public key should be invalid", kt, curve)
 	}
 }
 
@@ -76,19 +76,19 @@ func TestInvalidKey(t *testing.T) {
 }
 
 func testValidKey(t *testing.T, kt keypair.KeyType, curve byte) {
-	pri, pub, err := keypair.GenerateKeyPair(keypair.PK_ECDSA, keypair.P256)
+	pri, pub, err := keypair.GenerateKeyPair(kt, curve)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("key type %v curve %v: %v", kt, curve, err)
 	}
 
 	isValid := ValidatePrivateKey(pri)
 	if !isValid {
-		t.Fatal("should return true")
+		t.Fatalf("key type %v curve %v: private key should be valid", kt, curve)
 	}
 
 	isValid = ValidatePublicKey(pub)
 	if !isValid {
-		t.Fatal("should return true")
+		t.Fatalf("key type %v curve %v: public key should be valid", kt, curve)
 	}
 }
 

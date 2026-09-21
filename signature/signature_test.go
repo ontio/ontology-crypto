@@ -268,21 +268,25 @@ func TestEd25519(t *testing.T) {
 }
 
 func TestAllSchemeECDSA(t *testing.T) {
-	for c := keypair.P224; c < keypair.P521; c++ {
+	for c := keypair.P224; c <= keypair.P521; c++ {
 		pri, _, err := keypair.GenerateKeyPair(keypair.PK_ECDSA, c)
 		if err != nil {
-			t.Fatal(err)
+			t.Fatalf("curve %v: %v", c, err)
 		}
 
-		for scheme := SHA224withECDSA; scheme < RIPEMD160withECDSA; scheme++ {
-			sig, err := Sign(SHA256withECDSA, pri, msg, nil)
+		for scheme := SHA224withECDSA; scheme <= RIPEMD160withECDSA; scheme++ {
+			sig, err := Sign(scheme, pri, msg, nil)
 			if err != nil {
-				t.Fatal(err)
+				t.Fatalf("curve %v scheme %v: sign: %v", c, scheme, err)
 			}
 
 			buf, err := Serialize(sig)
 			if err != nil {
-				t.Fatal(err)
+				t.Fatalf("curve %v scheme %v: serialize: %v", c, scheme, err)
+			}
+
+			if !Verify(pri.Public(), msg, sig) {
+				t.Errorf("curve %v scheme %v: verification failed", c, scheme)
 			}
 
 			testDeserialize(t, buf, sig)
