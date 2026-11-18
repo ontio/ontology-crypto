@@ -469,6 +469,9 @@ func GetP256KeyPairFromWIF(wif []byte) (PrivateKey, error) {
 	if pos != 34 {
 		return nil, errors.New("parse WIF error, invalid data length")
 	}
+	if buf[0] != 0x80 || buf[33] != 0x01 {
+		return nil, errors.New("invalid WIF version or compression marker")
+	}
 	sum := sha256.Sum256(buf[:pos])
 	sum = sha256.Sum256(sum[:])
 	if !bytes.Equal(sum[:4], buf[pos:]) {
