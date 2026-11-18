@@ -20,3 +20,13 @@ check for callers.
 Encryption rejects empty passwords, matching decryption. The signature package
 rejects NUL-containing SM2 IDs because its wire format uses NUL as a delimiter;
 the lower-level SM2 signing algorithm continues to support arbitrary ID bytes.
+
+Custom scrypt parameters must have a power-of-two N greater than one, positive
+R/P, and DKLen between 32 and 1024. Derivation is limited to an estimated
+256 MiB of scrypt buffers and N*R*P <= 16,777,216. Existing key files exceeding
+these limits are rejected; defaults remain supported.
+
+For Ethereum signatures, pair Sign(..., true) with VerifyEthereumMessage and
+Sign(..., false) with VerifyEthereumDigest. The latter requires exactly 32
+bytes. Legacy Verify retains its length-based interpretation for compatibility;
+it cannot distinguish a 32-byte message from a digest.

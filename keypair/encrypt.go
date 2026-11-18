@@ -237,8 +237,19 @@ func saltFromAddress(addr string) []byte {
 }
 
 func kdf(pwd []byte, salt []byte, param *ScryptParam) (dkey []byte, err error) {
-	if param == nil || param.DKLen < 32 {
-		err = errors.New("derived key length too short")
+	if param == nil || param.DKLen < 32 || param.DKLen > 1024 ||
+		param.N < 2 || param.N&(param.N-1) != 0 || param.R <= 0 || param.P <= 0 {
+		err = errors.New("invalid scrypt parameters")
+		return
+	}
+	// Bound memory (128*r*(N+p+2)) and work (N*r*p). Divide before
+	// multiplying so even attacker-controlled machine-sized integers are safe.
+	const memoryUnits = 256 * 1024 * 1024 / 128
+	const maxWork = 16 * 1024 * 1024
+	if param.R > memoryUnits || param.N > memoryUnits/param.R ||
+		param.P > memoryUnits/param.R-param.N-2 ||
+		param.N > maxWork/param.R/param.P {
+		err = errors.New("scrypt resource limit exceeded")
 		return
 	}
 

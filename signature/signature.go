@@ -179,6 +179,8 @@ func Sign(scheme SignatureScheme, pri crypto.PrivateKey, msg []byte, opt interfa
 
 // Verify checks whether @sig is a valid signature for @msg with the public key
 // @pub, and return true/false as the result.
+// For Ethereum, this legacy API treats 32-byte input as a digest. Use
+// VerifyEthereumMessage or VerifyEthereumDigest to select semantics explicitly.
 func Verify(pub crypto.PublicKey, msg []byte, sig *Signature) bool {
 	if len(msg) == 0 || sig == nil {
 		return false
@@ -225,39 +227,36 @@ func Verify(pub crypto.PublicKey, msg []byte, sig *Signature) bool {
 			}
 		}
 	case *ec.EthereumPublicKey:
-		if sig.Scheme != KECCAK256WithECDSA || key == nil || key.PublicKey == nil {
-			return false
-		}
-		if ec.ValidatePoint(key.Curve, key.X, key.Y) != nil {
-			return false
-		}
-		raw, ok := sig.Value.([]byte)
-		if !ok {
-			return false
-		}
-		kb := ethcrypto.FromECDSAPub(key.PublicKey)
-		if len(raw) < ethcrypto.SignatureLength {
-			return false
-		}
-		raw = raw[:ethcrypto.RecoveryIDOffset] // remove recovery id
-
 		if len(msg) != ethcrypto.DigestLength {
-			hasher := GetHash(KECCAK256WithECDSA)
-
-			if hasher == nil {
-				return false
-			}
-			hasher.Write(msg)
-
-			digest := hasher.Sum(nil)
-			return ethcrypto.VerifySignature(kb, digest, raw)
+			return VerifyEthereumMessage(key, msg, sig)
 		}
-
-		// compatible with ethereum
-		return ethcrypto.VerifySignature(kb, msg, raw)
+		return VerifyEthereumDigest(key, msg, sig)
 	}
 
 	return res
+}
+
+// VerifyEthereumMessage hashes msg with Keccak-256, even for a 32-byte
+// message. It matches Sign(KECCAK256WithECDSA, key, msg, true).
+func VerifyEthereumMessage(pub *ec.EthereumPublicKey, msg []byte, sig *Signature) bool {
+	return VerifyEthereumDigest(pub, ethcrypto.Keccak256(msg), sig)
+}
+
+// VerifyEthereumDigest verifies an already hashed, exactly 32-byte digest.
+// It matches Sign(KECCAK256WithECDSA, key, digest, false).
+func VerifyEthereumDigest(pub *ec.EthereumPublicKey, digest []byte, sig *Signature) bool {
+	if len(digest) != ethcrypto.DigestLength || sig == nil || sig.Scheme != KECCAK256WithECDSA ||
+		pub == nil || pub.PublicKey == nil || pub.Curve != ethcrypto.S256() {
+		return false
+	}
+	if ec.ValidatePoint(pub.Curve, pub.X, pub.Y) != nil {
+		return false
+	}
+	raw, ok := sig.Value.([]byte)
+	if !ok || len(raw) != ethcrypto.SignatureLength {
+		return false
+	}
+	return ethcrypto.VerifySignature(ethcrypto.FromECDSAPub(pub.PublicKey), digest, raw[:ethcrypto.RecoveryIDOffset])
 }
 
 // Serialize the signature object to byte array as the following format:
