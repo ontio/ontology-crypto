@@ -313,6 +313,12 @@ func Serialize(sig *Signature) ([]byte, error) {
 		}
 		buf.Write(data)
 	case []byte:
+		if sig.Scheme == SHA512withEDDSA && len(v) != ed25519.SignatureSize {
+			return nil, errors.New("invalid Ed25519 signature length")
+		}
+		if sig.Scheme == KECCAK256WithECDSA && len(v) != ethcrypto.SignatureLength {
+			return nil, errors.New("invalid Ethereum signature length")
+		}
 		buf.Write(v)
 	default:
 		return nil, errors.New("failed serializing signature: unrecognized signature type")
@@ -352,7 +358,7 @@ func Deserialize(buf []byte) (*Signature, error) {
 		SHA3_224withECDSA, SHA3_256withECDSA, SHA3_384withECDSA, SHA3_512withECDSA,
 		RIPEMD160withECDSA:
 		if len(data) == 65 { // secp256k1 signature
-			sig.Value = data
+			sig.Value = append([]byte(nil), data...)
 		} else {
 			dsa, err := deserializeDSA(data)
 			if err != nil {
@@ -380,10 +386,16 @@ func Deserialize(buf []byte) (*Signature, error) {
 		}
 		sig.Value = &SM2Signature{ID: id, DSASignature: *dsa}
 	case SHA512withEDDSA:
+		if len(data) != ed25519.SignatureSize {
+			return nil, errors.New(e + "invalid Ed25519 signature length")
+		}
 		val := make([]byte, len(data))
 		copy(val, data)
 		sig.Value = val
 	case KECCAK256WithECDSA:
+		if len(data) != ethcrypto.SignatureLength {
+			return nil, errors.New(e + "invalid Ethereum signature length")
+		}
 		val := make([]byte, len(data))
 		copy(val, data)
 		sig.Value = val
