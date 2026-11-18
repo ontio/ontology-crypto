@@ -19,10 +19,42 @@
 package vrf
 
 import (
+	"bytes"
 	"testing"
 
 	"github.com/ontio/ontology-crypto/keypair"
 )
+
+func TestVerifyPreservesInputBuffers(t *testing.T) {
+	pri, pub, err := keypair.GenerateKeyPair(keypair.PK_ECDSA, keypair.P256)
+	if err != nil {
+		t.Fatal(err)
+	}
+	msg := []byte("buffer ownership regression")
+	value, nizk, err := Vrf(pri, msg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, valid := range []bool{true, false} {
+		// The trailing bytes represent another field in the caller's message.
+		backing := bytes.Repeat([]byte{0xa5}, len(nizk)+len(value))
+		copy(backing, nizk)
+		before := append([]byte(nil), backing...)
+		valueBefore := append([]byte(nil), value...)
+		inputMsg := append([]byte(nil), msg...)
+		if !valid {
+			inputMsg[0] ^= 1
+		}
+		msgBefore := append([]byte(nil), inputMsg...)
+		ok, err := Verify(pub, inputMsg, value, backing[:len(nizk)])
+		if err != nil || ok != valid {
+			t.Fatalf("valid=%v: got %v, %v", valid, ok, err)
+		}
+		if !bytes.Equal(backing, before) || !bytes.Equal(value, valueBefore) || !bytes.Equal(inputMsg, msgBefore) {
+			t.Fatalf("valid=%v: Verify modified caller-owned memory", valid)
+		}
+	}
+}
 
 func testVrf(t *testing.T, kt keypair.KeyType, curve byte) {
 	pri, pub, err := keypair.GenerateKeyPair(kt, curve)

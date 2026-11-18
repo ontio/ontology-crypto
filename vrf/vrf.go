@@ -68,7 +68,11 @@ func Verify(pub keypair.PublicKey, msg, vrf, nizk []byte) (bool, error) {
 	if len(vrf) != byteLen*2+1 || len(nizk) != byteLen*2 {
 		return false, nil
 	}
-	proof := append(nizk, vrf...)
+	// Own the combined proof: appending to nizk can overwrite caller data
+	// beyond its length when the input slice has spare capacity.
+	proof := make([]byte, len(nizk)+len(vrf))
+	copy(proof, nizk)
+	copy(proof[len(nizk):], vrf)
 	_, err := ProofToHash(pk.PublicKey, h, msg, proof)
 	if err != nil {
 		return false, nil
