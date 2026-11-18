@@ -4,9 +4,10 @@ import (
 	"bytes"
 	"crypto/ecdsa"
 	"crypto/rand"
-	"github.com/ontio/ontology-crypto/sm3"
 	"math/big"
 	"testing"
+
+	"github.com/ontio/ontology-crypto/sm3"
 )
 
 func TestLeadingZeroEncoding(t *testing.T) {

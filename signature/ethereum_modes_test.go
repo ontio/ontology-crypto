@@ -1,10 +1,11 @@
 package signature
 
 import (
+	"testing"
+
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/ontio/ontology-crypto/ec"
 	"github.com/ontio/ontology-crypto/keypair"
-	"testing"
 )
 
 func TestEthereumExplicitModes(t *testing.T) {

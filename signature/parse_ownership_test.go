@@ -2,8 +2,9 @@ package signature
 
 import (
 	"bytes"
-	"github.com/ontio/ontology-crypto/keypair"
 	"testing"
+
+	"github.com/ontio/ontology-crypto/keypair"
 )
 
 func TestDeserializeCompactOwnsBuffer(t *testing.T) {

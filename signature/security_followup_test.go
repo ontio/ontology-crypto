@@ -1,8 +1,9 @@
 package signature
 
 import (
-	"github.com/ontio/ontology-crypto/keypair"
 	"testing"
+
+	"github.com/ontio/ontology-crypto/keypair"
 )
 
 func TestTypedNilSignatures(t *testing.T) {

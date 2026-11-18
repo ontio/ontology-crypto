@@ -3,8 +3,9 @@ package sm2
 import (
 	"crypto/ecdsa"
 	"errors"
-	"github.com/ontio/ontology-crypto/ec"
 	"math/big"
+
+	"github.com/ontio/ontology-crypto/ec"
 )
 
 // fieldBytes encodes a validated field element as fixed-width big endian.

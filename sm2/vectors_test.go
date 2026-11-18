@@ -103,7 +103,7 @@ func TestSM2SignatureVector(t *testing.T) {
 	}
 
 	// A non-empty user ID exercises the ENTL encoding and the full ZA path.
-	id  := "1234567812345678"
+	id := "1234567812345678"
 	msg := []byte("message digest")
 
 	// (r, s) derived with k = 59276E27… (fixed scalar).
@@ -138,12 +138,12 @@ func TestSM2EncryptionVector(t *testing.T) {
 	c := SM2P256V1()
 
 	// Recipient key pair (same as the signature test).
-	d  := mustBig("5BE7E4B09A761BF5562DDF8E6A33184E00D0C09C942C6ADBAD1141D5D08431F0")
+	d := mustBig("5BE7E4B09A761BF5562DDF8E6A33184E00D0C09C942C6ADBAD1141D5D08431F0")
 	Qx := mustBig("BED1C52A2BB67D2CC82B0D099C5832B7886E21828C3745F84990C249CF8D5890")
 	Qy := mustBig("762A3A2E07C0E4EF2DEE435D4F2B76D8892B42E77727EEF72B9CBFA29C5EB76B")
 	priv := &ecdsa.PrivateKey{D: d, PublicKey: ecdsa.PublicKey{Curve: c, X: Qx, Y: Qy}}
 
-	k   := mustBig("59276E27D506861A16680F3AD9C02DCCEF3CC1FA3CDBE4CE6D54B80DEAC1BC58")
+	k := mustBig("59276E27D506861A16680F3AD9C02DCCEF3CC1FA3CDBE4CE6D54B80DEAC1BC58")
 	msg := []byte("encryption standard")
 
 	// Step 1: verify that our elliptic-curve arithmetic matches the expected
