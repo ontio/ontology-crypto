@@ -26,6 +26,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"math/big"
+	"strings"
 
 	"github.com/btcsuite/btcd/btcec"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
@@ -79,6 +80,9 @@ func Sign(scheme SignatureScheme, pri crypto.PrivateKey, msg []byte, opt interfa
 			id := ""
 			if opt, ok := opt.(string); ok {
 				id = opt
+			}
+			if strings.IndexByte(id, 0) >= 0 {
+				return nil, errors.New("SM2 signature encoding does not support NUL in user ID")
 			}
 			r, s, err0 := sm2.Sign(rand.Reader, key.PrivateKey, id, msg, hasher)
 			if err0 != nil {
@@ -192,30 +196,39 @@ func Verify(pub crypto.PublicKey, msg []byte, sig *Signature) bool {
 		if key == nil || key.PublicKey == nil {
 			return false
 		}
+		if ec.ValidatePoint(key.Curve, key.X, key.Y) != nil {
+			return false
+		}
 		switch sig.Scheme {
 		case SHA224withECDSA, SHA256withECDSA, SHA384withECDSA, SHA512withECDSA, SHA3_224withECDSA, SHA3_256withECDSA, SHA3_384withECDSA, SHA3_512withECDSA, RIPEMD160withECDSA:
 			h.Write(msg)
 			digest := h.Sum(nil)
 			if v, ok := sig.Value.(*DSASignature); ok {
-				if v.R != nil && v.S != nil {
+				if v != nil && v.R != nil && v.S != nil {
+					if v.size != 0 && v.size != (key.Params().BitSize+7)/8 {
+						return false
+					}
 					res = ecdsa.Verify(key.PublicKey, digest, v.R, v.S)
 				}
 			} else if v, ok := sig.Value.([]byte); ok {
 				res = Secp256k1Verify(key, digest, v)
 			}
 		case SM3withSM2:
-			if v, ok := sig.Value.(*SM2Signature); ok {
+			if v, ok := sig.Value.(*SM2Signature); ok && v != nil {
 				res = sm2.Verify(key.PublicKey, v.ID, msg, h, v.R, v.S)
 			}
 		}
 	case ed25519.PublicKey:
-		if sig.Scheme == SHA512withEDDSA {
+		if sig.Scheme == SHA512withEDDSA && len(key) == ed25519.PublicKeySize {
 			if v, ok := sig.Value.([]byte); ok {
 				res = ed25519.Verify(key, msg, v)
 			}
 		}
 	case *ec.EthereumPublicKey:
 		if sig.Scheme != KECCAK256WithECDSA || key == nil || key.PublicKey == nil {
+			return false
+		}
+		if ec.ValidatePoint(key.Curve, key.X, key.Y) != nil {
 			return false
 		}
 		raw, ok := sig.Value.([]byte)
@@ -287,6 +300,9 @@ func Serialize(sig *Signature) ([]byte, error) {
 		buf.Write(data)
 
 	case *SM2Signature:
+		if v == nil || strings.IndexByte(v.ID, 0) >= 0 {
+			return nil, errors.New("invalid SM2 signature or NUL in user ID")
+		}
 		if sig.Scheme != SM3withSM2 {
 			return nil, errors.New("failed serializing signature: unmatched signature scheme and value")
 		}
@@ -419,8 +435,8 @@ func deserializeDSA(buf []byte) (*DSASignature, error) {
 	size := length / 2
 	// The widest component supported by any curve in this library is P-521,
 	// which needs 66 bytes. Anything wider cannot come from a valid curve.
-	if size > maxComponentSize {
-		return nil, errors.New("signature component too large")
+	if size != 28 && size != 32 && size != 48 && size != 66 {
+		return nil, errors.New("unsupported signature component width")
 	}
 
 	r := new(big.Int).SetBytes(buf[0:size])

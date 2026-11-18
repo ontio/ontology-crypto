@@ -172,7 +172,7 @@ func Encrypt(pub *ecdsa.PublicKey, data []byte) ([]byte, error) {
 	tmp := make([]byte, 32+len(data)+32)
 	copy(tmp[32-len(x2.Bytes()):], x2.Bytes())
 	copy(tmp[32:], data)
-	copy(tmp[len(tmp)-32:], y2.Bytes())
+	copy(tmp[len(tmp)-32:], fieldBytes(y2, 32))
 	c3 := sm3.Sum(tmp)
 
 	copy(encryptData[64:], c3[:])
@@ -182,6 +182,9 @@ func Encrypt(pub *ecdsa.PublicKey, data []byte) ([]byte, error) {
 }
 
 func Decrypt(priv *ecdsa.PrivateKey, encryptData []byte) ([]byte, error) {
+	if err := validatePrivateKey(priv, false); err != nil {
+		return nil, err
+	}
 	if priv == nil {
 		return nil, errors.New("nil private key")
 	}
@@ -227,7 +230,7 @@ func Decrypt(priv *ecdsa.PrivateKey, encryptData []byte) ([]byte, error) {
 	tmp := make([]byte, 32+len(Msg)+32)
 	copy(tmp[32-len(x2.Bytes()):], x2.Bytes())
 	copy(tmp[32:], Msg)
-	copy(tmp[len(tmp)-32:], y2.Bytes())
+	copy(tmp[len(tmp)-32:], fieldBytes(y2, 32))
 	c3 := sm3.Sum(tmp)
 
 	// Use a constant-time comparison so the position of the first mismatching

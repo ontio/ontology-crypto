@@ -23,6 +23,7 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"crypto/sha256"
+	"encoding/json"
 	"errors"
 
 	"github.com/ontio/ontology-crypto/ec"
@@ -71,9 +72,12 @@ func DecryptPrivateKey(prot *ProtectedKey, pwd []byte) (PrivateKey, error) {
 }
 
 func EncryptWithCustomScrypt(pri PrivateKey, addr string, pwd []byte, param *ScryptParam) (*ProtectedKey, error) {
+	if len(pwd) == 0 {
+		return nil, NewEncryptError("empty password")
+	}
 	var res = ProtectedKey{
 		Address: addr,
-		EncAlg:  "aes-256-gcm",
+		EncAlg:  "aes-256-gcm-v2",
 	}
 
 	salt, err := randomBytes(16)
@@ -116,7 +120,7 @@ func EncryptWithCustomScrypt(pri PrivateKey, addr string, pwd []byte, param *Scr
 		return nil, NewEncryptError(err.Error())
 	}
 
-	ciphertext := gcm.Seal(nil, nonce, plaintext, []byte(addr))
+	ciphertext := gcm.Seal(nil, nonce, plaintext, protectedKeyAAD(&res))
 	res.Key = ciphertext
 	return &res, nil
 }
@@ -130,7 +134,7 @@ func DecryptWithCustomScrypt(prot *ProtectedKey, pwd []byte, param *ScryptParam)
 
 	// Check parameters
 	switch prot.EncAlg {
-	case "aes-256-gcm":
+	case "aes-256-gcm", "aes-256-gcm-v2":
 		// generate random salt
 		salt := prot.Salt
 		dkey, err := kdf(pwd, salt, param)
@@ -140,7 +144,10 @@ func DecryptWithCustomScrypt(prot *ProtectedKey, pwd []byte, param *ScryptParam)
 		ekey := dkey[len(dkey)-32:]
 		nonce := dkey[:12]
 		gcm, err := gcmCipher(ekey)
-		plaintext, err = gcm.Open(nil, nonce, prot.Key, []byte(prot.Address))
+		if err != nil {
+			return nil, NewDecryptError(err.Error())
+		}
+		plaintext, err = gcm.Open(nil, nonce, prot.Key, protectedKeyAAD(prot))
 		if err != nil {
 			return nil, NewDecryptError(err.Error())
 		}
@@ -230,7 +237,7 @@ func saltFromAddress(addr string) []byte {
 }
 
 func kdf(pwd []byte, salt []byte, param *ScryptParam) (dkey []byte, err error) {
-	if param.DKLen < 32 {
+	if param == nil || param.DKLen < 32 {
 		err = errors.New("derived key length too short")
 		return
 	}
@@ -238,6 +245,33 @@ func kdf(pwd []byte, salt []byte, param *ScryptParam) (dkey []byte, err error) {
 	// Derive the encryption key
 	dkey, err = scrypt.Key([]byte(pwd), salt, param.N, param.R, param.P, param.DKLen)
 	return
+}
+
+// protectedKeyAAD binds v2 ciphertext to its interpretation. JSON provides
+// unambiguous field boundaries and deterministic ordering of string map keys.
+func protectedKeyAAD(prot *ProtectedKey) []byte {
+	if prot.EncAlg == "aes-256-gcm" {
+		return []byte(prot.Address)
+	}
+	data, _ := json.Marshal(struct {
+		Domain     string
+		Address    string
+		Algorithm  string
+		Parameters map[string]string
+		Salt       []byte
+		Hash       string
+	}{prot.EncAlg, prot.Address, prot.Alg, prot.Param, prot.Salt, prot.Hash})
+	return data
+}
+
+// DecryptAuthenticatedPrivateKey rejects legacy formats whose metadata is not
+// authenticated. Use this entry point for untrusted key files. Legacy imports
+// must be explicitly opted into through DecryptWithCustomScrypt and re-encrypted.
+func DecryptAuthenticatedPrivateKey(prot *ProtectedKey, pwd []byte, param *ScryptParam) (PrivateKey, error) {
+	if prot == nil || prot.EncAlg != "aes-256-gcm-v2" {
+		return nil, NewDecryptError("authenticated v2 key format required")
+	}
+	return DecryptWithCustomScrypt(prot, pwd, param)
 }
 
 func gcmCipher(key []byte) (cipher.AEAD, error) {
