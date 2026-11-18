@@ -120,7 +120,11 @@ func EncryptWithCustomScrypt(pri PrivateKey, addr string, pwd []byte, param *Scr
 		return nil, NewEncryptError(err.Error())
 	}
 
-	ciphertext := gcm.Seal(nil, nonce, plaintext, protectedKeyAAD(&res))
+	aad, err := protectedKeyAAD(&res)
+	if err != nil {
+		return nil, NewEncryptError(err.Error())
+	}
+	ciphertext := gcm.Seal(nil, nonce, plaintext, aad)
 	res.Key = ciphertext
 	return &res, nil
 }
@@ -147,7 +151,11 @@ func DecryptWithCustomScrypt(prot *ProtectedKey, pwd []byte, param *ScryptParam)
 		if err != nil {
 			return nil, NewDecryptError(err.Error())
 		}
-		plaintext, err = gcm.Open(nil, nonce, prot.Key, protectedKeyAAD(prot))
+		aad, err := protectedKeyAAD(prot)
+		if err != nil {
+			return nil, NewDecryptError(err.Error())
+		}
+		plaintext, err = gcm.Open(nil, nonce, prot.Key, aad)
 		if err != nil {
 			return nil, NewDecryptError(err.Error())
 		}
@@ -237,7 +245,7 @@ func saltFromAddress(addr string) []byte {
 }
 
 func kdf(pwd []byte, salt []byte, param *ScryptParam) (dkey []byte, err error) {
-	if param == nil || param.DKLen < 32 || param.DKLen > 1024 ||
+	if param == nil || param.DKLen < 32 || param.DKLen > 1<<20 ||
 		param.N < 2 || param.N&(param.N-1) != 0 || param.R <= 0 || param.P <= 0 {
 		err = errors.New("invalid scrypt parameters")
 		return
@@ -246,8 +254,14 @@ func kdf(pwd []byte, salt []byte, param *ScryptParam) (dkey []byte, err error) {
 	// multiplying so even attacker-controlled machine-sized integers are safe.
 	const memoryUnits = 256 * 1024 * 1024 / 128
 	const maxWork = 16 * 1024 * 1024
-	if param.R > memoryUnits || param.N > memoryUnits/param.R ||
-		param.P > memoryUnits/param.R-param.N-2 ||
+	if param.R > memoryUnits || param.N > memoryUnits/param.R {
+		err = errors.New("scrypt resource limit exceeded")
+		return
+	}
+	// At this point N <= memoryUnits/R, so the remaining budget for P is
+	// non-negative. Split into two steps to keep all comparisons positive.
+	remaining := memoryUnits/param.R - param.N
+	if remaining < 2 || param.P > remaining-2 ||
 		param.N > maxWork/param.R/param.P {
 		err = errors.New("scrypt resource limit exceeded")
 		return
@@ -260,11 +274,11 @@ func kdf(pwd []byte, salt []byte, param *ScryptParam) (dkey []byte, err error) {
 
 // protectedKeyAAD binds v2 ciphertext to its interpretation. JSON provides
 // unambiguous field boundaries and deterministic ordering of string map keys.
-func protectedKeyAAD(prot *ProtectedKey) []byte {
+func protectedKeyAAD(prot *ProtectedKey) ([]byte, error) {
 	if prot.EncAlg == "aes-256-gcm" {
-		return []byte(prot.Address)
+		return []byte(prot.Address), nil
 	}
-	data, _ := json.Marshal(struct {
+	data, err := json.Marshal(struct {
 		Domain     string
 		Address    string
 		Algorithm  string
@@ -272,7 +286,10 @@ func protectedKeyAAD(prot *ProtectedKey) []byte {
 		Salt       []byte
 		Hash       string
 	}{prot.EncAlg, prot.Address, prot.Alg, prot.Param, prot.Salt, prot.Hash})
-	return data
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
 }
 
 // DecryptAuthenticatedPrivateKey rejects legacy formats whose metadata is not

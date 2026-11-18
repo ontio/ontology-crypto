@@ -246,7 +246,8 @@ func VerifyEthereumMessage(pub *ec.EthereumPublicKey, msg []byte, sig *Signature
 // It matches Sign(KECCAK256WithECDSA, key, digest, false).
 func VerifyEthereumDigest(pub *ec.EthereumPublicKey, digest []byte, sig *Signature) bool {
 	if len(digest) != ethcrypto.DigestLength || sig == nil || sig.Scheme != KECCAK256WithECDSA ||
-		pub == nil || pub.PublicKey == nil || pub.Curve != ethcrypto.S256() {
+		pub == nil || pub.PublicKey == nil || pub.Curve == nil ||
+		pub.Curve.Params().Name != ethcrypto.S256().Params().Name {
 		return false
 	}
 	if ec.ValidatePoint(pub.Curve, pub.X, pub.Y) != nil {
@@ -418,6 +419,9 @@ func serializeDSA(sig *DSASignature) ([]byte, error) {
 			return nil, errors.New("failed serializing signature: component out of range")
 		}
 	}
+	// When Curve is nil (deserialized signature) the curve order is unknown, so
+	// full range validation against N is not possible here. The width check
+	// below (len(r) > size) bounds the components to the encoded field.
 
 	size := sig.size
 	if size <= 0 {
@@ -453,9 +457,10 @@ func deserializeDSA(buf []byte) (*DSASignature, error) {
 	}
 
 	size := length / 2
-	// The widest component supported by any curve in this library is P-521,
-	// which needs 66 bytes. Anything wider cannot come from a valid curve.
-	if size != 28 && size != 32 && size != 48 && size != 66 {
+	// Reject components wider than the widest supported curve (P-521, 66 bytes).
+	// A range check rather than a whitelist preserves compatibility with any
+	// non-standard curve whose component width was accepted by older releases.
+	if size > maxComponentSize {
 		return nil, errors.New("unsupported signature component width")
 	}
 

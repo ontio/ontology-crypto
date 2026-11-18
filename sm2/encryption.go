@@ -155,8 +155,8 @@ func Encrypt(pub *ecdsa.PublicKey, data []byte) ([]byte, error) {
 
 		x2, y2 = c.ScalarMult(pub.X, pub.Y, k.Bytes())
 		x2y2 := make([]byte, 64)
-		copy(x2y2[32-len(x2.Bytes()):], x2.Bytes())
-		copy(x2y2[64-len(y2.Bytes()):], y2.Bytes())
+		copy(x2y2[:32], fieldBytes(x2, 32))
+		copy(x2y2[32:], fieldBytes(y2, 32))
 
 		t, ret := sm3kdf(x2y2, len(data))
 		if ret == 0 {
@@ -170,7 +170,7 @@ func Encrypt(pub *ecdsa.PublicKey, data []byte) ([]byte, error) {
 	}
 
 	tmp := make([]byte, 32+len(data)+32)
-	copy(tmp[32-len(x2.Bytes()):], x2.Bytes())
+	copy(tmp[:32], fieldBytes(x2, 32))
 	copy(tmp[32:], data)
 	copy(tmp[len(tmp)-32:], fieldBytes(y2, 32))
 	c3 := sm3.Sum(tmp)
@@ -184,9 +184,6 @@ func Encrypt(pub *ecdsa.PublicKey, data []byte) ([]byte, error) {
 func Decrypt(priv *ecdsa.PrivateKey, encryptData []byte) ([]byte, error) {
 	if err := validatePrivateKey(priv, false); err != nil {
 		return nil, err
-	}
-	if priv == nil {
-		return nil, errors.New("nil private key")
 	}
 	var c SM2Curve
 	if t, ok := priv.Curve.(SM2Curve); !ok {
@@ -213,8 +210,8 @@ func Decrypt(priv *ecdsa.PrivateKey, encryptData []byte) ([]byte, error) {
 	x2, y2 := c.ScalarMult(x1, y1, priv.D.Bytes())
 	c2 := make([]byte, 64)
 
-	copy(c2[32-len(x2.Bytes()):], x2.Bytes())
-	copy(c2[64-len(y2.Bytes()):], y2.Bytes())
+	copy(c2[:32], fieldBytes(x2, 32))
+	copy(c2[32:], fieldBytes(y2, 32))
 
 	MsgLen := len(encryptData) - 96
 	t, ret := sm3kdf(c2, MsgLen)
@@ -228,7 +225,7 @@ func Decrypt(priv *ecdsa.PrivateKey, encryptData []byte) ([]byte, error) {
 	}
 
 	tmp := make([]byte, 32+len(Msg)+32)
-	copy(tmp[32-len(x2.Bytes()):], x2.Bytes())
+	copy(tmp[:32], fieldBytes(x2, 32))
 	copy(tmp[32:], Msg)
 	copy(tmp[len(tmp)-32:], fieldBytes(y2, 32))
 	c3 := sm3.Sum(tmp)

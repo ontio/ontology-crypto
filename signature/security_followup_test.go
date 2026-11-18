@@ -31,7 +31,7 @@ func TestCanonicalWidths(t *testing.T) {
 		raw[size] = 1
 		raw[size*2] = 1
 		_, err := Deserialize(raw)
-		valid := size == 28 || size == 32 || size == 48 || size == 66
+		valid := size > 0 && size <= maxComponentSize
 		if (err == nil) != valid {
 			t.Fatalf("size=%d error=%v", size, err)
 		}
