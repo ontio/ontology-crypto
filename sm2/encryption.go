@@ -150,8 +150,8 @@ func Encrypt(pub *ecdsa.PublicKey, data []byte) ([]byte, error) {
 		}
 
 		x1, y1 := c.ScalarBaseMult(k.Bytes())
-		copy(encryptData[32-len(x1.Bytes()):], x1.Bytes())
-		copy(encryptData[64-len(y1.Bytes()):], y1.Bytes())
+		x1.FillBytes(encryptData[:32])
+		y1.FillBytes(encryptData[32:64])
 
 		x2, y2 = c.ScalarMult(pub.X, pub.Y, k.Bytes())
 		x2y2 := make([]byte, 64)

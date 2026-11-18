@@ -397,6 +397,15 @@ func serializeDSA(sig *DSASignature) ([]byte, error) {
 	if sig == nil || sig.R == nil || sig.S == nil {
 		return nil, errors.New("failed serializing signature: invalid DSA signature")
 	}
+	if sig.R.Sign() <= 0 || sig.S.Sign() <= 0 {
+		return nil, errors.New("failed serializing signature: non-positive component")
+	}
+	if sig.Curve != nil {
+		params := sig.Curve.Params()
+		if params == nil || params.N == nil || params.N.Sign() <= 0 || sig.R.Cmp(params.N) >= 0 || sig.S.Cmp(params.N) >= 0 {
+			return nil, errors.New("failed serializing signature: component out of range")
+		}
+	}
 
 	size := sig.size
 	if size <= 0 {
