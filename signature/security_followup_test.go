@@ -24,6 +24,35 @@ func TestTypedNilSignatures(t *testing.T) {
 	}
 }
 
+// TestVariableWidthVerification guards against regression of the backward-compat
+func TestVariableWidthVerification(t *testing.T) {
+	pri, pub, err := keypair.GenerateKeyPair(keypair.PK_ECDSA, keypair.P256)
+	if err != nil {
+		t.Fatal(err)
+	}
+	msg := []byte("compact width regression test")
+	sig, err := Sign(SHA256withECDSA, pri, msg, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dsa := sig.Value.(*DSASignature)
+
+	// Simulate old unpadded encoding: component width 31 < curve field width 32.
+	// The integers R and S are unchanged; only the recorded encoding width differs.
+	unpadded := &DSASignature{R: dsa.R, S: dsa.S, size: 31}
+	unpaddedSig := &Signature{Scheme: SHA256withECDSA, Value: unpadded}
+	if !Verify(pub, msg, unpaddedSig) {
+		t.Fatal("Verify rejected a valid signature whose encoded component width (31) is less than the curve field width (32)")
+	}
+
+	// Oversized width must still be rejected.
+	oversized := &DSASignature{R: dsa.R, S: dsa.S, size: 33}
+	oversizedSig := &Signature{Scheme: SHA256withECDSA, Value: oversized}
+	if Verify(pub, msg, oversizedSig) {
+		t.Fatal("Verify accepted a signature with oversized component width (33 > 32)")
+	}
+}
+
 func TestCanonicalWidths(t *testing.T) {
 	for size := 1; size <= 67; size++ {
 		raw := make([]byte, 1+size*2)

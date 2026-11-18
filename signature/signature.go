@@ -207,7 +207,7 @@ func Verify(pub crypto.PublicKey, msg []byte, sig *Signature) bool {
 			digest := h.Sum(nil)
 			if v, ok := sig.Value.(*DSASignature); ok {
 				if v != nil && v.R != nil && v.S != nil {
-					if v.size != 0 && v.size != (key.Params().BitSize+7)/8 {
+					if v.size != 0 && v.size > (key.Params().BitSize+7)/8 {
 						return false
 					}
 					res = ecdsa.Verify(key.PublicKey, digest, v.R, v.S)
